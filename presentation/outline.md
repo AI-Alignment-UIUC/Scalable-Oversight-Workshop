@@ -8,7 +8,7 @@ Quotes give section numbers. Quotes marked † came from a text extraction of th
 
 | Time | Part | Format |
 |---|---|---|
-| 6:00–6:10 | Arrival, snacks, open Colab (QR code to this repo on screen) | |
+| 6:00–6:10 | Arrival, snacks, open Colab (QR code to this repo on screen); early arrivals start Notebook 0 | |
 | 6:10–6:25 | **0. The problem**, plus "find the mistake" warm-up | talk + pairs |
 | 6:25–6:55 | **1. Iterated amplification** → Notebook 1 | 10 min talk, 20 min hands-on |
 | 6:55–7:35 | **2. Debate**: theory → Notebook 2, then the pixel game → Notebook 3 | 15 min talk, 25 min hands-on |

@@ -21,10 +21,11 @@ Going further: Barnes, [*Debate update: Obfuscated arguments problem*](https://w
 
 ## Notebooks
 
-Every notebook runs on a free Colab CPU in about a minute, with no API keys and nothing to install beyond what Colab already has (numpy, scikit-learn, matplotlib).
+New to the topic? Start with notebook 0. Every notebook runs on a free Colab CPU in about a minute, with no API keys and nothing to install beyond what Colab already has (numpy, scikit-learn, matplotlib).
 
 | # | Notebook | What you do | Paper |
 |---|---|---|---|
+| 0 | **[Start here](notebooks/00_start_here.ipynb)** [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/AI-Alignment-UIUC/Scalable-Oversight-Workshop/blob/main/notebooks/00_start_here.ipynb) | A gentle walkthrough of all three ideas with one running example: checking the total of a 1,024-line ledger when you can only add two numbers at a time. Predict-then-run questions, a debate you can judge yourself, no ML. | All three |
 | 1 | [Iterated amplification](notebooks/01_iterated_amplification.ipynb) [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/AI-Alignment-UIUC/Scalable-Oversight-Workshop/blob/main/notebooks/01_iterated_amplification.ipynb) | Train a network to compute σᵏ(x) when the "human" can only look up one step and split questions in two. Then give the human random vs. systematic blind spots and watch which ones compound. | Christiano et al. §§1–4 |
 | 2 | [Debate as path-halving](notebooks/02_debate_reachability.ipynb) [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/AI-Alignment-UIUC/Scalable-Oversight-Workshop/blob/main/notebooks/02_debate_reachability.ipynb) | Two debaters argue whether a maze cell is reachable; a judge who checks only one step decides. See why a weak opponent lets lies through, and a toy version of obfuscated arguments. | Irving et al. §2; Iliad §11 |
 | 3 | [The pixel game](notebooks/03_debate_pixels.ipynb) [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/AI-Alignment-UIUC/Scalable-Oversight-Workshop/blob/main/notebooks/03_debate_pixels.ipynb) | A judge that sees 4 pixels of a digit goes from ~30% to ~70% accuracy when an honest and a lying debater pick which pixels to reveal. | Irving et al. §3.1 |
@@ -44,7 +45,8 @@ Each notebook ends with exercises, from quick tweaks to starting points for a pr
 
 ```
 notebooks/
-  01_iterated_amplification.ipynb   ← open these in Colab
+  00_start_here.ipynb               ← open these in Colab
+  01_iterated_amplification.ipynb
   02_debate_reachability.ipynb
   03_debate_pixels.ipynb
   04_recursive_reward_modeling.ipynb
