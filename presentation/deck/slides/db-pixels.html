@@ -1,0 +1,17 @@
+<section id="db-pixels">
+<p class="eyebrow">Notebook 3 · the pixel game</p>
+<h2>A judge that sees four pixels</h2>
+<div class="row" style="gap:64px">
+<div class="col grow" style="gap:24px">
+<p class="body">The judge sees only a few pixels of a digit. Two debaters see it all, and take turns choosing which pixels to reveal: one argues for the true label, one for a lie.</p>
+<p class="quote-m">“With 6 pixels, debate with precommit turns a 59.4% accurate judge into a 88.9% accurate debate.”</p>
+<p class="cite">Irving et al. (2018), §3.1, on MNIST</p>
+</div>
+<div class="col" style="width:640px;gap:24px">
+<div class="row-c"><p class="big" style="font-size:120px">31%</p><p class="big-label">our judge alone, 4 random pixels of an 8×8 digit</p></div>
+<div class="row-c"><p class="big acc" style="font-size:120px">70%</p><p class="big-label">debate, honest player beats every possible lie</p></div>
+</div>
+</div>
+<p class="small">The honest player often reveals a blank pixel. “There’s no ink here” is evidence too.</p>
+<aside>Our version uses scikit-learn’s 8×8 digits and greedy debaters, so numbers differ from the paper’s MNIST and tree search. More pixels: 2 / 4 / 6 pixels gives judge alone about 20 / 29 / 40% and debate about 61 / 70 / 82%. A liar who reveals random pixels always loses, which tests nothing: debate is only as informative as the opposition is strong. Caveat: here debaters can only reveal true pixels, so they cannot lie about evidence.</aside>
+</section>

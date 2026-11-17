@@ -1,0 +1,13 @@
+<section id="db-halving">
+<p class="eyebrow">02 · Why it could scale</p>
+<h2>Halve the claim to one step</h2>
+<div class="col" style="gap:20px">
+<div class="row-c in" style="--i:0"><p class="lvl">L = 64</p><div class="bar grow"><div class="seg hot"><p class="tag">u → c</p></div><div class="seg"><p class="tag">c → v</p></div></div></div>
+<div class="row-c in" style="--i:1"><p class="lvl">L = 32</p><div class="bar" style="width:740px"><div class="seg"><p class="tag">u → c′</p></div><div class="seg hot"><p class="tag">c′ → c</p></div></div></div>
+<div class="row-c in" style="--i:2"><p class="lvl">L = 16</p><div class="bar" style="width:370px"><div class="seg hot"><p class="tag">…</p></div><div class="seg"><p class="tag">…</p></div></div></div>
+<div class="row-c in" style="--i:3"><p class="lvl">L = 1</p><div class="bar" style="width:120px"><div class="seg hot"><p class="tag">1 step</p></div></div><p class="small">the judge checks this, and only this</p></div>
+</div>
+<p class="body">Alice names a midpoint. Bob picks the half he thinks is false. A false claim always has a false half, so a strong Bob drives it down to one checkable step.</p>
+<p class="cite">“For any problem L ∈ PSPACE, we can choose a polynomial time judge so that optimal play in the debate game with polynomially many steps solves L.” Irving et al., §2.2</p>
+<aside>This is the reachability proof from the Iliad notes, §11: a debate verifies “t is reachable from s in at most L steps” by recursively halving the path. The judge does log2(L) rounds of bookkeeping and one adjacency check. Orange marks the half Bob disputes. Optional aside: cross-examination, letting a debater question frozen copies of the opponent, pushes the theoretical power from PSPACE to NEXP (Iliad §§12–13).</aside>
+</section>

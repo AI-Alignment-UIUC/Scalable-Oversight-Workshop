@@ -2,6 +2,8 @@
 
 Two hours, SCCS 4403, 6–8 pm. Roughly a third talk, two thirds hands-on. Each part is a short talk followed by a notebook that people run themselves while presenters walk around.
 
+The finished deck built from this outline is in [`slides.pdf`](slides.pdf) and [`slides.html`](slides.html), with [`speaker-notes.md`](speaker-notes.md).
+
 Quotes give section numbers. Quotes marked † came from a text extraction of the paper or page (math stripped) and should be checked against the PDF before they go on a slide. The rest were cross-checked for the SRC [Discussion 2 primer](https://github.com/AI-Alignment-UIUC/Singularity-Reading-Club/blob/main/scalable%20oversight/discussion-2-primer.md).
 
 ## Agenda

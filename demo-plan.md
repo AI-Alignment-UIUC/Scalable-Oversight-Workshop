@@ -54,6 +54,20 @@ What to run live on the projector, what to point at, and what numbers to expect.
 
 **Say:** "An optimizer finds exactly the parts of the outcome nobody evaluates. Every level of recursion adds seams."
 
+## Interactive moments
+
+Every notebook now has a 🎛 **Explore** section. These work well on the projector, and as a first thing for people to try themselves:
+
+| Notebook | Control | Use it to show |
+|---|---|---|
+| 0 | **Be the judge** (buttons) | Ask a volunteer to judge. Have them once pick the half where debaters *agree*: the liar gets away with it. |
+| 0 | **Crooked bookkeeper** (dropdown + checkbox) | Carry-forward fraud passes the page audit and fails once seams are checked; "transaction + page total" passes both. |
+| 1 | **Ask the amplified team** (sliders) | The decomposition tree for any σᵏ(x), with ✓/✗ at every node. |
+| 1 | **Run your own experiment** (button) | Random rate 0.3 still learns (100%); 4 blind spots drops to about 20%; "peel one" reaches about 80% in 30 rounds. A few seconds per run. |
+| 2 | **You are Bob** (buttons + "show distances") | Play once with distances shown (strong Bob, always wins) and once without (weak Bob). |
+| 3 | **You are the judge** (buttons) | The room votes A or B; compare the room's score with the network judge's. |
+| 4 | **Write a document** (text box) | The prefilled optimizer document scores top under the naive evaluator but has 14 broken seams. |
+
 ## Hands-on suggestions
 
 Point people at one exercise per notebook so the room doesn't splinter:

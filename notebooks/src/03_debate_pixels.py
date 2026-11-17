@@ -9,6 +9,14 @@
 #
 # We rebuild a small version with scikit-learn's built-in 8×8 handwritten digits (no download, CPU only, about a minute). Our numbers will differ from the paper's (smaller images, simpler judge, greedy debaters instead of Monte Carlo tree search), but the shape of the result is the point.
 #
+# > **What you'll see**
+# > 1. A "judge" network that sees only 4 pixels of a handwritten digit guesses right about 30% of the time (section 1).
+# > 2. When an honest and a lying debater choose which pixels to show it, it picks the true digit about 70% of the time (section 2).
+# > 3. Pictures of debates, and what happens with more pixels or a lazy liar (sections 3–4).
+# > 4. **You judge a debate yourself**, and controls to explore (section 5).
+#
+# Use **Runtime → Run all**. The longest cell takes about 30 seconds. Needs numpy, matplotlib, scikit-learn and ipywidgets (all in Colab).
+#
 # **Why it matters for oversight.** The judge stands in for a human who cannot inspect everything a strong model sees. The debaters stand in for strong models. If honest debaters reliably win, the weak judge can supervise questions it could never answer alone.
 
 # %%
@@ -144,13 +152,123 @@ lazy = np.mean([all(debate(X_te[i], y_te[i], l, K, "random")[0] for l in range(1
 print(f"\n{K} pixels, liar reveals at random: honest beats every lie {lazy:.1%}")
 
 # %% [markdown]
-# ## 5. What this does and does not show
+# ## 5. 🎛 Explore
+#
+# ### 5a. You are the judge
+#
+# Two debaters, **A** and **B**, each claim a different digit. Between them they reveal 4 pixels (light blue is hidden). One of them is honest. Which digit is it? Click your answer, then see the full image and what our judge network decided.
+
+# %%
+import ipywidgets as widgets
+from IPython.display import display, HTML
+
+class HumanJudge:
+    def __init__(self, k=K):
+        self.k, self.score, self.played = k, 0, 0
+        self.out = widgets.Output()
+        self.ba = widgets.Button(description="A is honest", button_style="info")
+        self.bb = widgets.Button(description="B is honest", button_style="info")
+        self.bn = widgets.Button(description="Next debate", button_style="warning")
+        self.ba.on_click(lambda _: self.answer("A")); self.bb.on_click(lambda _: self.answer("B"))
+        self.bn.on_click(lambda _: self.new())
+        display(widgets.VBox([widgets.HBox([self.ba, self.bb, self.bn]), self.out]))
+        self.new()
+
+    def new(self):
+        self.i = int(rng.integers(len(X_te)))
+        x, y = X_te[self.i], int(y_te[self.i])
+        # the liar picks the lie that does best against the honest debater
+        best = None
+        for lie in range(10):
+            if lie == y: continue
+            won, mask, order = debate(x, y, lie, self.k)
+            margin = judge_probs(x, mask[None])[0]
+            gap = margin[y] - margin[lie]
+            if best is None or gap < best[0]:
+                best = (gap, lie, mask, order)
+        _, self.lie, self.mask, self.order = best
+        self.honest_is = "A" if rng.random() < 0.5 else "B"
+        self.claims = {self.honest_is: y, ("B" if self.honest_is == "A" else "A"): self.lie}
+        self.answered = False
+        self.draw(reveal=False)
+
+    def draw(self, reveal, note=""):
+        x = X_te[self.i]
+        self.out.clear_output(wait=True)
+        with self.out:
+            fig, axes = plt.subplots(1, 2 if reveal else 1, figsize=(7 if reveal else 3.5, 3.5))
+            axes = np.atleast_1d(axes)
+            shown = np.full(64, np.nan); shown[self.mask] = x[self.mask]
+            cmap = plt.cm.gray_r.copy(); cmap.set_bad("#cfe3f5")
+            axes[0].imshow(np.ma.masked_invalid(shown.reshape(8, 8)), cmap=cmap, vmin=0, vmax=1)
+            for t, px in enumerate(self.order):
+                r, c = divmod(px, 8)
+                who = "A" if (t % 2 == 0) == (self.honest_is == "A") else "B"
+                axes[0].add_patch(plt.Rectangle((c - .5, r - .5), 1, 1, fill=False, lw=3,
+                                                color="tab:purple" if who == "A" else "tab:orange"))
+                axes[0].text(c, r, who, ha="center", va="center", color="tab:red", fontsize=11, weight="bold")
+            axes[0].set_title(f"A says {self.claims['A']},  B says {self.claims['B']}")
+            if reveal:
+                axes[1].imshow(x.reshape(8, 8), cmap="gray_r"); axes[1].set_title(f"the real digit: {y_te[self.i]}")
+            for a in axes: a.set_xticks([]); a.set_yticks([])
+            plt.show()
+            display(HTML(note or "<p>Boxes show who revealed each pixel. Which debater is honest?</p>"))
+
+    def answer(self, pick):
+        if self.answered: return
+        self.answered, self.played = True, self.played + 1
+        right = pick == self.honest_is
+        self.score += right
+        p = judge_probs(X_te[self.i], self.mask[None])[0]
+        y = int(y_te[self.i])
+        net = "the honest debater" if p[y] > p[self.lie] else "the liar"
+        self.draw(True, f"<p>{'✓ Right' if right else '✗ Fooled'}: {self.honest_is} was honest. "
+                        f"Our judge network sided with {net}. Your score: {self.score}/{self.played}.</p>")
+
+human_judge = HumanJudge()
+
+# %% [markdown]
+# ### 5b. Explore one debate
+#
+# Pick a test image, the lie the liar argues for, how many pixels get revealed, and how hard the liar tries. The bar chart shows how the judge's belief ends up split across all ten digits.
+
+# %%
+def explore(image=0, lie=1, pixels=4, liar="greedy"):
+    x, y = X_te[image], int(y_te[image])
+    if lie == y:
+        print(f"Image {image} really is a {y}; pick a different lie."); return
+    won, mask, order = debate(x, y, lie, pixels, liar)
+    p = judge_probs(x, mask[None])[0]
+    fig, axes = plt.subplots(1, 3, figsize=(12, 3.2), gridspec_kw={"width_ratios": [1, 1, 1.6]})
+    axes[0].imshow(x.reshape(8, 8), cmap="gray_r"); axes[0].set_title(f"true digit {y}")
+    shown = np.full(64, np.nan); shown[mask] = x[mask]
+    cmap = plt.cm.gray_r.copy(); cmap.set_bad("#cfe3f5")
+    axes[1].imshow(np.ma.masked_invalid(shown.reshape(8, 8)), cmap=cmap, vmin=0, vmax=1)
+    for t, px in enumerate(order):
+        r, c = divmod(px, 8)
+        axes[1].add_patch(plt.Rectangle((c - .5, r - .5), 1, 1, fill=False, lw=3,
+                                        color="tab:green" if t % 2 == 0 else "tab:red"))
+    axes[1].set_title("judge sees (green honest, red liar)")
+    for a in axes[:2]: a.set_xticks([]); a.set_yticks([])
+    colors = ["tab:green" if d == y else "tab:red" if d == lie else "#bbbbbb" for d in range(10)]
+    axes[2].bar(range(10), p, color=colors); axes[2].set_xticks(range(10))
+    axes[2].set_title(f"judge's belief: {'honest wins' if won else 'LIAR WINS'}")
+    plt.show()
+
+widgets.interact(explore,
+                 image=widgets.IntSlider(value=0, min=0, max=len(X_te) - 1, description="image", continuous_update=False),
+                 lie=widgets.Dropdown(options=list(range(10)), value=1, description="liar claims"),
+                 pixels=widgets.IntSlider(value=4, min=2, max=10, description="pixels", continuous_update=False),
+                 liar=widgets.ToggleButtons(options=["greedy", "random"], description="liar plays"));
+
+# %% [markdown]
+# ## 6. What this does and does not show
 #
 # - The judge was trained on random pixels, not on debates, yet a debate between strong players makes it far more accurate. The debaters, not the judge, did the work of finding the informative evidence.
 # - It is a toy: our debaters can only reveal true pixels, so they **cannot lie about the evidence**, only choose it. The paper flags this limit itself, and asks whether in richer settings an agent can "sneak in a statement that appears logical but contains a hidden flaw without the other agent pointing out the flaw?" (§5.2).
 # - Later work moved this to language models judging debates about reading-comprehension passages the judge cannot see (see the reading list in the README).
 #
-# ## 6. Exercises
+# ## 7. Exercises
 #
 # 1. **Who moves first?** Let the liar reveal first. Does accuracy change? Why might the last word matter?
 # 2. **Without precommit.** Let the liar pick its lie *after* seeing the honest player's first pixel. How much does that help the liar? (The paper reports both settings.)

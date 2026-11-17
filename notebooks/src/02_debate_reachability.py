@@ -15,7 +15,15 @@
 #
 # The Iliad notes prove that result with one picture: "a debate can verify reachability by recursively halving a path" (§11). This notebook plays that debate on a maze. A weak judge, who only ever checks **one step** of the maze, correctly decides whether a far-away cell is reachable, as long as the debaters are strong.
 #
-# Runs in seconds on CPU. Only numpy and matplotlib are needed.
+# **In plain words.** Alice says "you can walk from this square to that square in at most 64 steps." Bob says she's wrong. You, the judge, can't search the maze; you can only check whether two squares are next to each other. Can you still tell who's right?
+#
+# > **What you'll see**
+# > 1. The protocol, played out on a maze, with pictures of each round (sections 1–2).
+# > 2. With a strong opponent the judge is never fooled; with a lazy one, lies almost always win (section 3).
+# > 3. What happens when the opponent can only afford to search part of the maze (section 4).
+# > 4. **You play Bob** against Alice, and controls to run your own debates (section 5).
+#
+# Runs in seconds on CPU. Use **Runtime → Run all**, then scroll down. Needs numpy, matplotlib and ipywidgets (all in Colab).
 
 # %%
 import numpy as np
@@ -224,8 +232,117 @@ plt.show()
 
 # %% [markdown]
 # A weak Bob has to guess during the early rounds, where checking a half means searching a big region. One wrong guess sends the debate into a half that is actually true, and from then on Alice wins honestly. So lies mostly win until Bob can afford to check the top-level claims. In this maze the checks do get cheap as the debate zooms in; obfuscated arguments are the case where *no* split makes the flaw cheap to find: every half looks equally plausible and checking any of them costs as much as the whole problem.
+
+# %% [markdown]
+# ## 5. 🎛 Explore
 #
-# ## 5. Exercises
+# ### 5a. You are Bob
+#
+# Alice makes a claim: "the **blue** square can be reached from the **green** square in at most L steps." Each round she names a midpoint (**orange**). You challenge one half. At the last round the judge checks a single step.
+#
+# Some claims are true and some are false; you aren't told which. Tick **show distances** to see the true shortest distances (that makes you a strong Bob who has searched the maze). Untick it and you have to judge by eye, like a Bob with a small compute budget.
+
+# %%
+import ipywidgets as widgets
+from IPython.display import display, HTML
+
+class BobGame:
+    def __init__(self, L=32):
+        self.L0 = L
+        self.out = widgets.Output()
+        self.b0 = widgets.Button(description="Challenge FIRST half", button_style="info")
+        self.b1 = widgets.Button(description="Challenge SECOND half", button_style="info")
+        self.bn = widgets.Button(description="New claim", button_style="warning")
+        self.hint = widgets.Checkbox(value=False, description="show distances")
+        self.b0.on_click(lambda _: self.pick(0)); self.b1.on_click(lambda _: self.pick(1))
+        self.bn.on_click(lambda _: self.reset()); self.hint.observe(lambda _: self.show(), names="value")
+        display(widgets.VBox([widgets.HBox([self.b0, self.b1, self.bn, self.hint]), self.out]))
+        self.reset()
+
+    def reset(self):
+        self.claim_true = rng.random() < 0.5
+        self.u, self.v = sample_claim(self.L0, self.claim_true)
+        self.start, self.goal = self.u, self.v
+        self.L, self.trail, self.done = self.L0, [], False
+        self.c = alice(self.u, self.v, self.L)
+        self.show()
+
+    def show(self, verdict=None):
+        self.out.clear_output(wait=True)
+        with self.out:
+            fig, ax = plt.subplots(figsize=(5.5, 5.5))
+            ax.imshow(~open_cell, cmap="Greys", vmin=0, vmax=1.6)
+            for (u, c, v) in self.trail:
+                ax.plot([u[1], c[1], v[1]], [u[0], c[0], v[0]], "-", color="#bbbbbb", lw=1.5)
+            ax.plot(*self.start[::-1], "s", color="tab:green", ms=11); ax.plot(*self.goal[::-1], "s", color="tab:blue", ms=11)
+            if not self.done:
+                u, c, v = self.u, self.c, self.v
+                ax.plot([u[1], c[1]], [u[0], c[0]], "-", color="tab:purple", lw=3, label="first half")
+                ax.plot([c[1], v[1]], [c[0], v[0]], "--", color="tab:purple", lw=3, label="second half")
+                ax.plot(u[1], u[0], "o", color="tab:purple", ms=9); ax.plot(v[1], v[0], "o", color="tab:purple", ms=9)
+                ax.plot(c[1], c[0], "o", color="tab:orange", ms=12, label="Alice's midpoint")
+                ax.legend(fontsize=8, loc="lower right")
+            ax.set_xticks([]); ax.set_yticks([]); plt.show()
+            if verdict:
+                display(HTML(verdict)); return
+            half = self.L // 2
+            msg = (f"<p><b>Round {len(self.trail) + 1}</b> (L = {self.L}). Alice claims: "
+                   f"{self.u} → {self.c} in ≤ {half} steps <i>and</i> {self.c} → {self.v} in ≤ {half} steps.</p>")
+            if self.hint.value:
+                d1, d2 = dist(self.u, self.c), dist(self.c, self.v)
+                msg += (f"<p style='color:#46536a'>True distances: first half {d1}, second half {d2} "
+                        f"(each must be ≤ {half}).</p>")
+            display(HTML(msg))
+
+    def pick(self, side):
+        if self.done:
+            return
+        self.trail.append((self.u, self.c, self.v))
+        self.u, self.v = (self.u, self.c) if side == 0 else (self.c, self.v)
+        self.L //= 2
+        if self.L > 1:
+            self.c = alice(self.u, self.v, self.L); self.show(); return
+        self.done = True
+        ok = one_step(self.u, self.v)
+        truth = "TRUE" if self.claim_true else "FALSE"
+        if ok and not self.claim_true:
+            res = "Alice wins, <b>but the claim was false</b>: her lie hid in a half you didn't challenge."
+        elif ok:
+            res = "Alice wins, and the claim was true. Nothing you could have done: honest claims always survive."
+        else:
+            res = "<b>You caught Alice lying</b> at a single step the judge could check."
+        self.show(f"<p>The judge checks one step {self.u} → {self.v}: {'valid' if ok else 'INVALID'}. {res} "
+                  f"(The original claim was {truth}; real distance {dist(self.start, self.goal)}.) "
+                  f"Click <i>New claim</i> to play again.</p>")
+
+bob_game = BobGame(L=32)
+
+# %% [markdown]
+# ### 5b. Run a debate with your own settings
+#
+# Change the claim length, whether Alice is lying, and how Bob plays. "budget" Bob can only search a limited number of cells per check (section 4). Each change reruns the debate; change the seed to get a new pair of squares.
+
+# %%
+def explore_debate(L=64, claim="false", bob="strong", budget=100, seed=0):
+    global rng
+    rng = np.random.default_rng(seed)
+    u, v = sample_claim(L, claim == "true")
+    chooser = {"strong": bob_optimal, "random": bob_random, "budget": make_bob_budget(budget)}[bob]
+    verdict, tr = debate(u, v, L, chooser, verbose=True)
+    fig, ax = plt.subplots(figsize=(5.5, 5.5))
+    draw(tr, f"claim {claim}, {bob} Bob: judge says {'TRUE' if verdict else 'FALSE'}"
+         + ("" if verdict == (claim == "true") else "  (FOOLED)"), ax)
+    plt.show()
+
+widgets.interact(explore_debate,
+                 L=widgets.Dropdown(options=[8, 16, 32, 64], value=64, description="L (steps)"),
+                 claim=widgets.ToggleButtons(options=["true", "false"], value="false", description="claim is"),
+                 bob=widgets.ToggleButtons(options=["strong", "random", "budget"], value="strong", description="Bob"),
+                 budget=widgets.IntSlider(value=100, min=10, max=800, step=10, description="budget", continuous_update=False),
+                 seed=widgets.IntSlider(value=0, min=0, max=50, description="seed", continuous_update=False));
+
+# %% [markdown]
+# ## 6. Exercises
 #
 # 1. **Iliad Exercise 11.x.** Count the rounds and the length of each message in this protocol, as a function of the maze size and L. Why is that polynomial in the input size even though the number of paths is exponential?
 # 2. **Weaken the judge.** Let `one_step` be wrong 10% of the time. What happens to accuracy with a strong Bob? Is debate robust to a noisy judge at the leaves?

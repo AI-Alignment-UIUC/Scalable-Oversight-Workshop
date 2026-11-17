@@ -1,0 +1,12 @@
+<section id="ia-demo" class="dark">
+<p class="eyebrow">Notebook 1 · live</p>
+<h2>The frontier of questions X can answer moves outward</h2>
+<div class="row" style="gap:64px">
+<div class="stat in" style="--i:0"><p class="big">8</p><p class="big-label">rounds until X answers σᵏ(x) for every k up to 32</p></div>
+<div class="stat in" style="--i:1"><p class="big acc">11k</p><p class="big-label">one-step lookups of σ used by amplification</p></div>
+<div class="stat in" style="--i:2"><p class="big">61k</p><p class="big-label">ground-truth labels used by supervised learning</p></div>
+</div>
+<div class="spacer"></div>
+<p class="body">H never does more than one lookup or two delegated questions, however large k is. Ground truth is used only to measure X.</p>
+<aside>Run section 3 live. The log shows k_cap doubling each round (2, 4, 8, 16, 32) and true accuracy climbing from about 0.2 to 1.00 by round 8. Then show the heatmap: yellow fills in from small k upward. The curriculum uses agreement between X and Amplify(X), which needs no ground truth. Supervised learning gets there in fewer rounds but each label for k=32 secretly costs 32 lookups.</aside>
+</section>

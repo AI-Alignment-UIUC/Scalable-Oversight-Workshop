@@ -18,7 +18,15 @@
 #
 # Like the paper, our H is a hand-coded algorithm: "Rather than having a human perform the decomposition, we provide a hard-coded algorithm H which decomposes each task" (§4.1). Ground truth is used **only to measure** how well X does, never to train it.
 #
-# Everything runs on CPU in about two minutes. Only numpy and matplotlib are needed.
+# **In plain words.** σ is a fixed shuffle of the numbers 0–15. σ(3) is where 3 goes after one shuffle; σᵏ(3) is where it ends up after k shuffles. Answering "where does 3 end up after 32 shuffles?" is hard if all you can do is look at one shuffle at a time. That's our overseer's situation.
+#
+# > **What you'll see**
+# > 1. A network that knows nothing learns to answer 32-shuffle questions, though its teacher only ever looked at one shuffle at a time (section 3).
+# > 2. It needs far fewer looks at the answer key than ordinary supervised learning (section 4).
+# > 3. When the teacher makes mistakes, *random* ones vanish but *consistent* ones spread (section 5).
+# > 4. Controls to run your own experiments (section 6).
+#
+# Everything runs on a CPU in about a minute. Use **Runtime → Run all**, then scroll down. Only numpy, matplotlib and ipywidgets are needed (Colab has all three).
 
 # %%
 import numpy as np
@@ -163,7 +171,7 @@ print(f"A : {amplify(X0, x, k)[0]}   (truth: {truth(x, k)})")
 # We also use a curriculum like the paper's (App. C.2: difficulty rises "when accuracy reaches 85%"), with one twist worth noticing: we measure progress by how often **X agrees with Amplify(X)**, which needs no ground truth at all.
 
 # %%
-def iterated_amplification(rounds=30, noise=0.0, amplify_fn=amplify, seed=0, verbose=True):
+def iterated_amplification(rounds=30, noise=0.0, amplify_fn=amplify, seed=0, verbose=True, threshold=0.85):
     global ORACLE_CALLS
     ORACLE_CALLS = 0
     X = Agent(seed)
@@ -174,7 +182,7 @@ def iterated_amplification(rounds=30, noise=0.0, amplify_fn=amplify, seed=0, ver
         targets = amplify_fn(X, xs, ks, noise)            # the amplified overseer's answers
         X.fit(xs, ks, targets)                            # distillation
         agree = (X(xs, ks) == amplify_fn(X, xs, ks, noise)).mean()
-        if agree > 0.85 and k_cap < K_MAX:
+        if agree > threshold and k_cap < K_MAX:
             k_cap = min(2 * k_cap, K_MAX)
         history.append(accuracy_by_k(X)); calls.append(ORACLE_CALLS)
         if verbose and (r < 8 or r % 5 == 4):
@@ -291,8 +299,90 @@ print(f"H's base-case error rate: {len(BLIND)/N:.0%} of inputs.  Error of X at k
 # H is wrong on only 12.5% of single lookups, but X ends up wrong on about half of the hard questions, because every long chain of reasoning that passes through a blind spot inherits the mistake. Averaging cannot fix an error that is the same every time. For systematic errors the map is **compounding**: per-level error grows with depth until it saturates at the share of questions whose path ever reaches a blind spot (here σ's cycle structure caps that at one half).
 #
 # **Takeaway for the talk:** amplification is only as good as the overseer's *correlated* errors. Random sloppiness is cheap; a consistent blind spot is spread to every question that depends on it.
+
+# %% [markdown]
+# ## 6. 🎛 Explore
 #
-# ## 6. Exercises
+# ### 6a. Ask the amplified team a question
+#
+# Pick a starting number x and a number of shuffles k. You'll see the decomposition H would use, with the trained X's answer at every node, checked against the truth. (This uses `X_amp`, the network trained in section 3.)
+
+# %%
+import ipywidgets as widgets
+
+def show_tree(x=3, k=13, depth_limit=4):
+    def walk(x, k, depth):
+        guess, true = int(X_amp(x, k)[0]), int(truth(x, k))
+        mark = "✓" if guess == true else f"✗ (truth {true})"
+        pad = "    " * depth
+        if k == 1:
+            print(f"{pad}σ^1({x}) = {guess} {mark}   ← H looks this up")
+            return
+        a, b = k // 2, k - k // 2
+        y = int(X_amp(x, a)[0])
+        print(f"{pad}σ^{k}({x}) = {guess} {mark}   H splits into σ^{a}({x}) then σ^{b}({y})")
+        if depth + 1 < depth_limit:
+            walk(x, a, depth + 1); walk(y, b, depth + 1)
+    walk(x, k, 0)
+
+widgets.interact(show_tree,
+                 x=widgets.IntSlider(value=3, min=0, max=N - 1, description="x"),
+                 k=widgets.IntSlider(value=13, min=1, max=K_MAX, description="k shuffles"),
+                 depth_limit=widgets.IntSlider(value=3, min=1, max=6, description="show levels"));
+
+# %% [markdown]
+# ### 6b. Run your own experiment
+#
+# Set up the overseer, then click **Run Interact**. Training takes a few seconds. Try these:
+#
+# - **Random mistakes**: how high can the mistake rate go before X stops learning?
+# - **Blind spots**: does the damage grow with the number of blind spots, or with k?
+# - **Decomposition**: "peel one" splits k into 1 + (k − 1) instead of halving. How many rounds does it need now?
+
+# %%
+def make_amplify(split="halve", noise=0.0, blind_spots=0):
+    blind = {int(sigma[i]): int((sigma[sigma[i]] + 1) % N) for i in range(blind_spots)}
+    def amp(X, x, k, _noise=0.0):
+        global ORACLE_CALLS
+        x, k = np.atleast_1d(x), np.atleast_1d(k)
+        ans = np.empty_like(x)
+        base = k == 1
+        xb = x[base]; ORACLE_CALLS += len(xb)
+        y = sigma[xb].copy()
+        wrong = rng.random(len(xb)) < noise
+        y[wrong] = rng.integers(0, N, wrong.sum())
+        for b, w in blind.items():
+            y[xb == b] = w
+        ans[base] = y
+        kk = k[~base]
+        a = kk // 2 if split == "halve" else np.ones_like(kk)
+        ans[~base] = X(X(x[~base], a), kk - a)
+        return ans
+    return amp
+
+def experiment(mistakes="random", rate=0.10, blind_spots=2, split="halve", rounds=30):
+    amp = make_amplify(split, rate if mistakes == "random" else 0.0,
+                       blind_spots if mistakes == "blind spots" else 0)
+    thr = 0.85 * (1 - (rate if mistakes == "random" else 0))   # so the curriculum can still advance
+    _, h, calls = iterated_amplification(rounds=rounds, amplify_fn=amp, verbose=False, threshold=thr)
+    fig, axes = plt.subplots(1, 2, figsize=(12, 3.5))
+    axes[0].imshow(h.T, aspect="auto", origin="lower", cmap="viridis", vmin=0, vmax=1,
+                   extent=[0.5, len(h) + 0.5, 0.5, K_MAX + 0.5])
+    axes[0].set_xlabel("round"); axes[0].set_ylabel("k"); axes[0].set_title("accuracy by round (yellow = right)")
+    axes[1].plot(ks, 1 - h[-1], "o-"); axes[1].set_ylim(-0.02, 1.02)
+    axes[1].set_xlabel("k"); axes[1].set_ylabel("error"); axes[1].set_title("error of the final X")
+    plt.show()
+    print(f"Final accuracy over all k: {h[-1].mean():.0%}.  Lookups used: {calls[-1]:,}")
+
+widgets.interact_manual(experiment,
+                        mistakes=widgets.ToggleButtons(options=["none", "random", "blind spots"], value="random"),
+                        rate=widgets.FloatSlider(value=0.10, min=0, max=0.6, step=0.05, description="random rate"),
+                        blind_spots=widgets.IntSlider(value=2, min=0, max=8, description="# blind spots"),
+                        split=widgets.Dropdown(options=["halve", "peel one"], description="H splits by"),
+                        rounds=widgets.IntSlider(value=30, min=5, max=60, step=5, description="rounds"));
+
+# %% [markdown]
+# ## 7. Exercises
 #
 # 1. **Catch the blind spot.** H knows σ is a permutation (every output appears exactly once). Write an `amplify` that uses this to detect, or route around, a misread. Hint: the paper's H returns a special "?" symbol "when recursive results are inconsistent" (App. C); try computing σᵏ(x) along two different decompositions and compare.
 # 2. **Thresholds.** In 5a, raise `noise` to 0.2, then higher. Two things break: the curriculum stalls (X can never agree with a noisy Amplify more than about 1 − noise of the time, so `k_cap` stops growing), and eventually averaging itself stops working. Fix the first, then find the noise level where the second happens. Why does it depend on N (a *thresholded* regime)?

@@ -91,6 +91,29 @@ print(f"Prediction if every one of the 1023 additions must be right: {(1 - 1/200
 # Every one of the 1,023 additions feeds into the final answer, so the chance that all are right is (1 − 1/200)¹⁰²³ ≈ 0.6%. Small per-step errors **compound** across a big tree. Notebook 1 shows a subtler version: when a model learns from many noisy examples, *random* slips average out, but a *systematic* blind spot gets copied into every answer that depends on it.
 # </details>
 #
+# ### 🎛 Try it: how reliable must each overseer be?
+#
+# Move the slider. How small does the per-overseer error rate need to be before the whole tree is usually right? (The trials rerun when you let go of the slider.)
+
+# %%
+import ipywidgets as widgets
+from IPython.display import display, HTML
+
+def try_tree(errors_per_10000=50, ledger_size=1024):
+    p = errors_per_10000 / 10_000
+    global ledger, true_total
+    full = ledger
+    ledger = full[:ledger_size]; true_total = sum(ledger)
+    ok = sum(hch_noisy(0, ledger_size, p) == true_total for _ in range(200))
+    print(f"Each overseer slips {p:.2%} of the time, tree of {ledger_size - 1} additions:")
+    print(f"  final total right in {ok}/200 trials ({ok / 200:.0%});  theory (1-p)^{ledger_size - 1} = {(1 - p) ** (ledger_size - 1):.0%}")
+    ledger = full; true_total = sum(ledger)
+
+widgets.interact(try_tree,
+                 errors_per_10000=widgets.IntSlider(value=50, min=0, max=200, step=5, description="slips /10k", continuous_update=False),
+                 ledger_size=widgets.SelectionSlider(options=[16, 64, 256, 1024], value=1024, description="ledger size", continuous_update=False));
+
+# %% [markdown]
 # This motivates the second idea: what if you didn't have to trust every node of the tree, only the one place where two experts disagree?
 
 # %% [markdown]
@@ -172,27 +195,85 @@ debate(alice_is_honest=False)
 debate(alice_is_honest=True, lie_size=-123_456)
 
 # %% [markdown]
-# ### Be the judge yourself
+# ### 🎛 Be the judge yourself
 #
-# Set `PLAY = True` and run the cell. At each round you'll see both debaters' half-totals and choose which half to dispute. (Leave it `False` to keep "Run all" working.)
+# Run the cell below. You'll get a fresh debate: one debater is lying, and **you don't know which**. Each round, click the half you want to dispute. When the dispute is down to one transaction, you read it and the liar is revealed (or not).
 #
-# Question while you play: **does it matter which half you pick?**
+# Question while you play: **does it matter which half you pick?** Try once picking where the debaters disagree, and once picking where they agree.
 
 # %%
-PLAY = False
+class JudgeGame:
+    def __init__(self):
+        self.out = widgets.Output()
+        self.left = widgets.Button(description="Dispute LEFT half", button_style="info")
+        self.right = widgets.Button(description="Dispute RIGHT half", button_style="info")
+        self.new = widgets.Button(description="New debate", button_style="warning")
+        self.left.on_click(lambda _: self.pick(0)); self.right.on_click(lambda _: self.pick(1))
+        self.new.on_click(lambda _: self.reset())
+        display(widgets.VBox([widgets.HBox([self.left, self.right, self.new]), self.out]))
+        self.reset()
 
-def human_judge(lo, mid, hi, halves, disputed):
-    print(f"\nRange [{lo}:{hi}].  Left half [{lo}:{mid}], right half [{mid}:{hi}]")
-    print(f"  Alice says left = {halves['Alice'][0]}, right = {halves['Alice'][1]}")
-    print(f"  Bob   says left = {halves['Bob'][0]}, right = {halves['Bob'][1]}")
-    while True:
-        choice = input("Dispute which half? (L/R): ").strip().upper()
-        if choice in ("L", "R"):
-            return 0 if choice == "L" else 1
+    def reset(self):
+        self.alice_honest = random.random() < 0.5
+        lie = true_total + random.choice([-1, 1]) * random.randint(5, 400)
+        self.liar_claim, self.liar_split = make_liar(lie)
+        self.claims = {"Alice": true_total if self.alice_honest else lie,
+                       "Bob": lie if self.alice_honest else true_total}
+        self.lo, self.hi, self.steps, self.history = 0, N, 0, []
+        self.show()
 
-if PLAY:
-    honest_won = debate(alice_is_honest=random.random() < 0.5, judge=human_judge)
-    print("The honest debater won." if honest_won else "The liar won! Look back: where did it slip past?")
+    def show(self):
+        self.out.clear_output()
+        with self.out:
+            if self.hi - self.lo == 1:
+                return self.finish()
+            mid = (self.lo + self.hi) // 2
+            h = (honest(self.lo, mid), honest(mid, self.hi))
+            l = self.liar_split(self.lo, self.hi)
+            self.cur = {"Alice": h if self.alice_honest else l, "Bob": l if self.alice_honest else h}
+            bar = "".join("█" if self.lo <= i * 16 < self.hi else "·" for i in range(N // 16))
+            A, B = self.cur["Alice"], self.cur["Bob"]
+            def cell(a, b):
+                color = "#b5371a" if a != b else "#46536a"
+                return f"<td style='padding:4px 14px;color:{color}'><b>{a}</b></td>"
+            display(HTML(f"""
+            <p><b>Round {len(self.history) + 1}.</b> Disputed range: transactions {self.lo}–{self.hi - 1}
+            &nbsp; <code>{bar}</code></p>
+            <table style='font-size:15px'>
+              <tr><th></th><th style='padding:4px 14px'>left half [{self.lo}:{mid}]</th>
+                  <th style='padding:4px 14px'>right half [{mid}:{self.hi}]</th><th style='padding:4px 14px'>adds up to</th></tr>
+              <tr><td><b>Alice</b></td>{cell(A[0], B[0])}{cell(A[1], B[1])}<td style='padding:4px 14px'>{A[0] + A[1]}</td></tr>
+              <tr><td><b>Bob</b></td>{cell(B[0], A[0])}{cell(B[1], A[1])}<td style='padding:4px 14px'>{B[0] + B[1]}</td></tr>
+            </table>
+            <p style='color:#46536a'>Numbers in orange are where they disagree. You've done {self.steps} steps of work so far.</p>"""))
+            self.steps += 2
+
+    def pick(self, side):
+        if self.hi - self.lo == 1:
+            return
+        mid = (self.lo + self.hi) // 2
+        self.history.append(side)
+        self.picked = {k: v[side] for k, v in self.cur.items()}
+        self.lo, self.hi = (self.lo, mid) if side == 0 else (mid, self.hi)
+        self.show()
+
+    def finish(self):
+        self.steps += 1
+        a, b = self.picked["Alice"], self.picked["Bob"]
+        truth = ledger[self.lo]
+        liar = "Bob" if self.alice_honest else "Alice"
+        if a == b:
+            verdict = (f"Both debaters say transaction {self.lo} is {a}, and it is {truth}. Nobody is caught: "
+                       f"you followed a half they agreed on, and the lie went with the half you dropped. "
+                       f"<b>{liar} was the liar and got away with it.</b>")
+        else:
+            caught = "Alice" if a != truth else "Bob"
+            verdict = (f"You read transaction {self.lo}: it is <b>{truth}</b>. Alice said {a}, Bob said {b}. "
+                       f"<b>{caught} was lying, and you caught them.</b>")
+        display(HTML(f"<p>{verdict}</p><p style='color:#46536a'>Total work: {self.steps} steps "
+                     f"(adding everything yourself: {N - 1}). Click <i>New debate</i> to play again.</p>"))
+
+game = JudgeGame()
 
 # %% [markdown]
 # <details><summary>▶ Does it matter which half you pick?</summary>
@@ -262,6 +343,53 @@ print("Audit + you check each carry-forward: honest passes:", audit(honest_books
 # Every assistant did its job perfectly. The fraud sat in the **seam between pages**, the one thing no assistant was asked to check. An AI that is being trained to pass the audit will find exactly those unchecked places, not out of malice but because they are where reward is cheapest to get. Checking the seams cost you only 32 more additions.
 #
 # Leike et al. raise the general worry themselves (§3.2): "An important open question is whether errors accumulate: do the mistakes of the more narrow agent A_{k-1} lead to larger mistakes in the training of agent A_k?" Notebook 4 shows an optimizer discovering the seams on its own.
+# </details>
+
+# %% [markdown]
+# ### 🎛 Try it: be the crooked bookkeeper
+#
+# Pick *how* to cook the books and *which* checks the auditor runs. Which tricks does each audit catch? Can you find a trick that passes even the careful audit?
+#
+# - **carry-forward**: inflate the running balance carried from one page to the next (a seam).
+# - **one transaction**: change a transaction inside a page but keep the page total.
+# - **page total**: change a page total (and carry that through honestly).
+# - **transaction + page total**: change a transaction *and* fix up the page total to match.
+
+# %%
+def cook_books(trick, page, amount):
+    books, running = [], 0
+    for p in range(N // PAGE):
+        rows = list(ledger[p * PAGE:(p + 1) * PAGE])
+        page_total = sum(rows)
+        if p == page and trick == "one transaction":
+            rows[3] += amount                              # the page no longer adds up
+        if p == page and trick == "page total":
+            page_total += amount
+        if p == page and trick == "transaction + page total":
+            rows[3] += amount; page_total = sum(rows)
+        running += page_total
+        if p == page and trick == "carry-forward":
+            running += amount
+        books.append((rows, page_total, running))
+    return books
+
+def try_audit(trick="carry-forward", page=20, amount=5000, check_seams=False):
+    books = cook_books(trick, page, amount)
+    passes = audit(books, check_carry=check_seams)
+    who = "page assistants" + (" + your seam checks" if check_seams else " only")
+    print(f"Reported total: {books[-1][2]}   (true total {true_total}, off by {books[-1][2] - true_total:+})")
+    print(f"Audit with {who}: {'PASSES ✗ (fraud missed)' if passes else 'FAILS ✓ (fraud caught)'}")
+
+widgets.interact(try_audit,
+                 trick=widgets.Dropdown(options=["carry-forward", "one transaction", "page total", "transaction + page total"], description="trick"),
+                 page=widgets.IntSlider(value=20, min=0, max=N // PAGE - 1, description="on page"),
+                 amount=widgets.IntSlider(value=5000, min=100, max=20000, step=100, description="amount"),
+                 check_seams=widgets.Checkbox(value=False, description="also check every carry-forward"));
+
+# %% [markdown]
+# <details><summary>▶ Which trick beats every audit, and what does that teach?</summary>
+#
+# "transaction + page total" passes both audits: every page adds up and every seam carries forward, because the bookkeeper changed the *evidence itself*. Our auditors trust the raw transactions; nobody compares them with the receipts. That is the next seam. Every layer of checking leaves some input it takes on trust, and an optimizer under pressure will find it. (The debate notebooks have the same caveat: there, debaters can only reveal true evidence.)
 # </details>
 
 # %% [markdown]
