@@ -1,0 +1,17 @@
+<section id="rrm-rm" class="alt">
+<p class="eyebrow">03 · Recursive reward modeling · Method</p>
+<h2>Learn the reward from the user, then optimize it</h2>
+<div class="row-c" style="gap:20px">
+<div class="box in" style="--i:0"><p class="lab">User</p><p class="val">gives feedback</p></div>
+<x-shape kind="arrow-right" class="arrow"></x-shape>
+<div class="box hl in" style="--i:1"><p class="lab">Reward model</p><p class="val">learns the intention</p></div>
+<x-shape kind="arrow-right" class="arrow"></x-shape>
+<div class="box in" style="--i:2"><p class="lab">Agent</p><p class="val">trained with RL</p></div>
+</div>
+<p class="body">“The user trains a reward model to learn their intentions by providing feedback.” “Both processes happen concurrently, thus we are training the agent with the user in the loop.” <span class="cite">§3.1</span></p>
+<div class="row">
+<div class="card"><p class="num">Assumption 1 · §1</p><p class="t">“We can learn user intentions to a sufficiently high accuracy.”</p></div>
+<div class="card"><p class="num">Assumption 2 · §1</p><p class="t">“For many tasks we want to solve, evaluation of outcomes is easier than producing the correct behavior.”</p></div>
+</div>
+<aside>Leike, Krueger, Everitt, Martic, Maini and Legg (2018), Scalable agent alignment via reward modeling: a research direction. The question it starts from (§1): “How can we create agents that behave in accordance with the user’s intentions?” The abstract defines reward modeling as “learning a reward function from interaction with the user and optimizing the learned reward function”. Fig. 1’s caption: “a reward model is trained with user feedback; this reward model provides rewards to an agent trained with RL by interacting with the environment.” The intuition behind Assumption 2: “it is easier for the user to evaluate an outcome in the environment than it would be to teach behavior directly.” RRM is Hubinger’s proposal 8. Difference from amplification: it trains agents with reward rather than training a model to imitate a human.</aside>
+</section>

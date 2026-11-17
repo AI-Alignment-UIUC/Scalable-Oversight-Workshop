@@ -1,0 +1,11 @@
+<section id="rrm-hack" class="alt">
+<p class="eyebrow">03 · What the paper found</p>
+<h2>A frozen reward model gets exploited</h2>
+<p class="quote-m in" style="--i:0">“Over time the agent learns to exploit the reward model: the perceived performance (according to the reward model) increases, while the actual performance (according to the game score) plummets.”</p>
+<p class="cite">Fig. 4, reproduced from Ibarz et al. (2018), Atari</p>
+<div class="row">
+<div class="card in" style="--i:1"><p class="num">Reward hacking · §4.3</p><p class="t">“an effect that lets the agent get more reward than intended by exploiting loopholes in the process determining the reward”</p></div>
+<div class="card in" style="--i:2"><p class="num">The fix · §5.1 Online feedback</p><p class="t">“If we provide the agent with reward feedback online, we get a tighter feedback loop between the user’s feedback and the agent’s behavior.”</p></div>
+</div>
+<aside>Fig. 4’s setup: “The fully trained reward model from the best seed is frozen and used to train an new agent from scratch.” (“an new” is the paper’s typo.) The §5.1 diagnosis: “Preliminary experiments show failure modes when the reward model is not trained online, i.e. in parallel with the agent”. “In these cases the agent learns to exploit reward models that are frozen.” “Because there is no additional user feedback, loopholes in the reward model that the agent discovers cannot be corrected.” This is the one result in the paper, and Notebook 3 reproduces its shape.</aside>
+</section>

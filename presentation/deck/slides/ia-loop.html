@@ -1,15 +1,15 @@
 <section id="ia-loop">
-<p class="eyebrow">01 · Iterated amplification</p>
+<p class="eyebrow">01 · Method</p>
 <h2>Distill the team into X, then amplify again</h2>
 <div class="row">
-<div class="card in" style="--i:0"><p class="num">Step 1</p><h3>Amplify</h3><p class="t">Run H plus copies of X on sampled questions. Record the answers.</p></div>
-<div class="card in" style="--i:1"><p class="num">Step 2</p><h3>Distill</h3><p class="t">Train X by supervised learning to give the team’s answers in one fast pass.</p></div>
-<div class="card in" style="--i:2"><p class="num">Step 3</p><h3>Repeat</h3><p class="t">The team gets stronger because X did. X chases a moving target.</p></div>
+<div class="card in" style="--i:0"><p class="num">Step 1 · §2.2</p><h3>Amplify</h3><p class="t">Sample a question, let H answer it with copies of X, and “record every decision made by H during the process.”</p></div>
+<div class="card in" style="--i:1"><p class="num">Step 2 · §2.2</p><h3>Model the human</h3><p class="t">“We train a model H′ to predict the decisions made by H in each of these transcripts”</p></div>
+<div class="card in" style="--i:2"><p class="num">Step 3 · §2.2</p><h3>Distill</h3><p class="t">Amplify again with H′ in place of H. “X is trained by supervised learning on these (Q, A) pairs.”</p></div>
 </div>
 <div class="spacer"></div>
 <div class="row">
 <div class="col grow"><p class="small"><b>No outside objective:</b> “the objective is implicit in the way that the human coordinates the copies of X” (§1.1)</p></div>
-<div class="col grow"><p class="small"><b>The bet, factored cognition:</b> hard reasoning breaks into small pieces a human can check.</p></div>
+<div class="col grow"><p class="small"><b>Repeat:</b> the amplified team “is modestly smarter than X working on its own, and X chases this moving target” (§2.3)</p></div>
 </div>
-<aside>Training loop from §2.2, simplified: the paper also learns a model H′ of the human so H isn’t queried every time. Amplify(X) “is modestly smarter than X working on its own, and X chases this moving target” (§2.3). In the limit the system approximates a huge tree of copies of H. Christiano’s name for that ideal, HCH (“humans consulting HCH”), comes from his blog posts, not this paper.</aside>
+<aside>Why H′ exists (§2.1): “In order to reduce the burden on the human expert H, we train a ‘human predictor’ H′”. Because H′ only learns how to split questions and combine answers, the paper expects “to train it with much less data”. In the limit the system approximates a huge tree of copies of H. Christiano’s name for that ideal, HCH (“humans consulting HCH”), comes from his blog posts, not this paper. Our notebook skips H′: H answers directly.</aside>
 </section>

@@ -23,7 +23,7 @@
 # |---|---|---|
 # | Task | σ on 64 elements, k up to 64 | σ on 16 elements, k up to 31 |
 # | H's decomposition | σ^{2k}(x) = σ^k(σ^k(x)) and σ^{2k+1}(x) = σ(σ^k(σ^k(x))) (Table 3) | same |
-# | Curriculum | raise the difficulty whenever X gets 85% of its training targets right (App. C.2) | same rule |
+# | Curriculum | raise the difficulty whenever X gets 85% of its training targets right (App. C.2); the difficulty is the size of σ, from 8 to 64 | same rule, but the difficulty is how large k can be |
 # | Baseline | supervised learning on ground truth (Fig. 2) | same |
 # | What X sees | a fresh random σ every time, so X must learn the *algorithm* | one fixed σ, so X only memorizes its powers |
 # | X | a transformer | a small numpy network |

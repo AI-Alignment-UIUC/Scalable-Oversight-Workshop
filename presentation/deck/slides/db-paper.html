@@ -1,0 +1,16 @@
+<section id="db-paper" class="alt">
+<p class="eyebrow">02 · What the paper found</p>
+<h2>Debate lifts a weak judge</h2>
+<table>
+<tr><th style="width:22%">Pixels shown</th><th style="width:26%">Judge alone</th><th style="width:26%">Debate, no precommit</th><th style="width:26%">Debate, precommit</th></tr>
+<tr><td><b>6</b></td><td>59.4%</td><td>74.4%</td><td><b>88.9%</b></td></tr>
+<tr><td><b>4</b></td><td>48.2%</td><td>59.7%</td><td><b>85.2%</b></td></tr>
+</table>
+<p class="small">MNIST, Table 2: the mean of games where the honest or the lying debater moves first.</p>
+<div class="row">
+<div class="card in" style="--i:0"><p class="num">§3.1</p><p class="t">“For both 4 and 6 pixels precommit is crucial”</p></div>
+<div class="card in" style="--i:1"><p class="num">§3.1</p><p class="t">“Both versions give an advantage to the second player to move”</p></div>
+<div class="card in" style="--i:2"><p class="num">The limit · §8</p><p class="t">“we have demonstrated only a basic experiment for MNIST images”</p></div>
+</div>
+<aside>The setup, from the Fig. 2 caption: “The debaters state their claimed label up front, then reveal one nonzero pixel per turn to the judge up to a total of 4 or 6.” How the experiment works (§3.1): “the judge is trained to classify MNIST from 6 (resp. 4) nonzero pixels, with the pixels chosen at random at training time.” The debaters use “pure Monte Carlo Tree Search” with “10k rollouts per move”. Precommit: “The two players precommit to their claimed label up front”; the paper plays “9 different games for the same image” and “the liar wins if any lie wins”. Without precommit, “the judge uses the maximum logit over all 10 classes” and “any incorrect guess by the judge is a win for the liar”. Table 2 in full, honest first / liar first: 6 px, no precommit 67.4 / 81.5, precommit 87.4 / 90.4; 4 px, no precommit 51.0 / 68.4, precommit 83.8 / 86.7. Table 2’s caption: “the honest player wins more often than a random judge, showing that honesty has an advantage”. The abstract puts it as “boosting the classifier’s accuracy from 59.4% to 88.9% given 6 pixels and from 48.2% to 85.2% given 4 pixels”. The §8 limit in full: “debate is proposal only for the natural language case, and we have demonstrated only a basic experiment for MNIST images.” Also note (§3.1) that debaters “cannot lie about these pixels, but a dishonest player could choose them adversarially to fool the judge.”</aside>
+</section>

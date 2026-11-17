@@ -1,12 +1,15 @@
 <section id="ia-demo" class="dark">
-<p class="eyebrow">Notebook 1 · live</p>
-<h2>The frontier of questions X can answer moves outward</h2>
-<div class="row" style="gap:64px">
-<div class="stat in" style="--i:0"><p class="big">100%</p><p class="big-label">of the 496 questions σᵏ(x), k up to 31, after 15 rounds</p></div>
-<div class="stat in" style="--i:1"><p class="big acc">9</p><p class="big-label">rounds to reach 95%; supervised learning on true answers takes 6</p></div>
-<div class="stat in" style="--i:2"><p class="big">0</p><p class="big-label">true answers to hard questions used by amplification</p></div>
-</div>
+<p class="eyebrow">01 · Demo setup · Notebook 1</p>
+<h2>Permutation powering, small enough to train in seconds</h2>
+<table>
+<tr><th style="width:18%"></th><th style="width:38%">Paper (§4.1)</th><th style="width:44%">Notebook 1</th></tr>
+<tr><td><b>Task</b></td><td>σ on 64 elements, k up to 64</td><td>σ on 16 elements, k up to 31: 496 questions</td></tr>
+<tr><td><b>H</b></td><td>halves k, looks up one σ (Table 3)</td><td>same decomposition, hard-coded</td></tr>
+<tr><td><b>X</b></td><td>a Transformer; σ is random and part of the input</td><td>a small network; one fixed σ, so X memorizes its powers</td></tr>
+<tr><td><b>Curriculum</b></td><td>grow the task once X gets 85% of its own (Q, A) pairs right (App. C.2)</td><td>same rule, but it raises k instead of the size</td></tr>
+<tr><td><b>Baseline</b></td><td>supervised learning on true answers (Fig. 2)</td><td>same</td></tr>
+</table>
 <div class="spacer"></div>
-<p class="body">H never does more than two delegated questions and one lookup, however large k is. Ground truth is used only to measure X.</p>
-<aside>Run section 3 live (about 20 seconds). The difficulty climbs from 1 to 5 in four rounds, using the paper’s 85% rule, which compares X with its own training targets and needs no ground truth. Every depth reaches 100% by about round 15. Then the heatmap: yellow fills in from depth 1 upward. Section 5 is the paper’s Fig. 2 comparison: amplification is a few rounds slower than supervised learning, the paper’s “modest slowdown”, but never sees a correct answer to a hard question.</aside>
+<p class="body"><b>Beyond the paper:</b> give H mistakes, random slips or two blind spots, and see which ones survive distillation.</p>
+<aside>Run section 3 live (about 20 seconds). What to expect: the difficulty climbs from 1 to 5 in four rounds under the 85% rule, which compares X with its own training targets and needs no ground truth. X answers all 496 questions by round 15. Section 5 is the Fig. 2 comparison: amplification reaches 95% at round 9, supervised learning on true answers at round 6, the paper’s “modest slowdown”. Amplification never sees a true answer to a hard question. Section 6 is our extension, since the paper’s H never errs: an H that misreads 10% of lookups at random leaves near-zero error, while an H that always misreads 2 of the 16 inputs leaves about 90% error on the deepest questions. Random error washes out in distillation; consistent bias is copied into every answer built on it. Another simplification: the paper also trains a model H′ of the human so H isn’t queried every time; our H answers directly. Hands-on (20 min): exercise 2 (catch the blind spot with the paper’s “?” answer, App. C.1) or exercise 3 (a worse decomposition).</aside>
 </section>
