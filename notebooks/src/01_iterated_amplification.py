@@ -1,32 +1,42 @@
 # %% [markdown]
-# # Notebook 1: Iterated Amplification on a toy task
+# # Notebook 1: Iterated amplification
 #
 # **Scalable Oversight Workshop · AI Alignment @ Illinois**
 #
-# Paper: Christiano, Shlegeris & Amodei (2018), [*Supervising strong learners by amplifying weak experts*](https://arxiv.org/abs/1810.08575).
+# Paper: Christiano, Shlegeris & Amodei (2018), [*Supervising strong learners by amplifying weak experts*](https://arxiv.org/abs/1810.08575), §§1–4 and Appendix C.
 #
 # > "We propose a new method, Iterated Amplification, for a human expert H to train an ML agent X." (§1.1)
 #
-# The amplified system is H "and several copies of X working together to solve a problem" (§1.1). X is trained to imitate that team, then the team gets stronger because X got stronger, and so on:
+# The amplified system, Amplify^H(X), consists "of H and several copies of X working together to solve a problem" (§1.1). X is trained to imitate that team. Then the team gets stronger, because X got stronger: Amplify^H(X) "is modestly smarter than X working on its own, and X chases this moving target" (§2.3).
 #
-# > "Amplify(X) is modestly smarter than X working on its own, and X chases this moving target" (§2.3, lightly reformatted)
+# The paper tests this on five algorithmic tasks (§4.1). This notebook is a small toy version of the first one, **permutation powering**:
 #
-# We rebuild the paper's first task, **permutation powering** (§4.1): given a permutation σ and a number k, answer "what is σᵏ(x)?". The trick is that our "human" H never solves a hard question. H can only:
+# > "Given a permutation σ: {1, …, 64} → {1, …, 64}, compute σ^k(x) for k up to 64." (§4.1)
 #
-# 1. look up σ(x) directly (one step, the base case), and
-# 2. split "σᵏ(x)?" into two easier questions, "y = σᵃ(x)?" then "σᵇ(y)?" with a + b = k, and ask X to answer them.
+# The paper doesn't use a human. "Rather than having a human perform the decomposition, we provide a hard-coded algorithm H which decomposes each task" (§4.1). H can look up σ(x) for a single x, and it can split a question into two easier ones. It never solves a hard question itself, and **ground truth is never used for training**, only to measure how X is doing.
 #
-# Like the paper, our H is a hand-coded algorithm: "Rather than having a human perform the decomposition, we provide a hard-coded algorithm H which decomposes each task" (§4.1). Ground truth is used **only to measure** how well X does, never to train it.
+# **In plain words.** σ is a fixed shuffle of the numbers 0–15. σ(3) is where 3 goes after one shuffle; σ^k(3) is where it ends up after k shuffles. "Where does 3 end up after 29 shuffles?" is hard if all you can do is look at one shuffle at a time. That is the overseer's situation.
 #
-# **In plain words.** σ is a fixed shuffle of the numbers 0–15. σ(3) is where 3 goes after one shuffle; σᵏ(3) is where it ends up after k shuffles. Answering "where does 3 end up after 32 shuffles?" is hard if all you can do is look at one shuffle at a time. That's our overseer's situation.
+# ### What we keep from the paper, and what we simplify
+#
+# | | Paper | This toy |
+# |---|---|---|
+# | Task | σ on 64 elements, k up to 64 | σ on 16 elements, k up to 31 |
+# | H's decomposition | σ^{2k}(x) = σ^k(σ^k(x)) and σ^{2k+1}(x) = σ(σ^k(σ^k(x))) (Table 3) | same |
+# | Curriculum | raise the difficulty whenever X gets 85% of its training targets right (App. C.2) | same rule |
+# | Baseline | supervised learning on ground truth (Fig. 2) | same |
+# | What X sees | a fresh random σ every time, so X must learn the *algorithm* | one fixed σ, so X only memorizes its powers |
+# | X | a transformer | a small numpy network |
+#
+# The fixed σ is the big simplification: it lets a tiny network learn in seconds. What carries over is the training signal, which is the part that matters for oversight.
 #
 # > **What you'll see**
-# > 1. A network that knows nothing learns to answer 32-shuffle questions, though its teacher only ever looked at one shuffle at a time (section 3).
-# > 2. It needs far fewer looks at the answer key than ordinary supervised learning (section 4).
-# > 3. When the teacher makes mistakes, *random* ones vanish but *consistent* ones spread (section 5).
-# > 4. Controls to run your own experiments (section 6).
+# > 1. A network that starts out knowing nothing learns to answer 31-shuffle questions, though its teacher only ever looked at one shuffle at a time (section 4).
+# > 2. It gets there a little more slowly than supervised learning on true answers, as in the paper's Fig. 2 (section 5).
+# > 3. Beyond the paper: when H makes mistakes, random ones wash out but consistent ones spread (section 6).
+# > 4. Controls to run your own experiments (section 7).
 #
-# Everything runs on a CPU in about a minute. Use **Runtime → Run all**, then scroll down. Only numpy, matplotlib and ipywidgets are needed (Colab has all three).
+# Everything runs on a CPU in under a minute. Use **Runtime → Run all**. Needs numpy, matplotlib and ipywidgets (all in Colab).
 
 # %%
 import numpy as np
@@ -34,52 +44,59 @@ import matplotlib.pyplot as plt
 
 rng = np.random.default_rng(0)
 
-N = 16        # permutation of {0, ..., N-1}
-K_MAX = 32    # we want X to answer sigma^k(x) for every k up to K_MAX
+N = 16          # sigma permutes {0, ..., 15}
+BITS = 5        # k is written with 5 bits, so 1 <= k <= 31
 
 sigma = rng.permutation(N)
 
 def truth(x, k):
-    """Ground truth sigma^k(x). Used ONLY for evaluation."""
-    x = np.array(x)
-    for _ in range(int(k)):
-        x = sigma[x]
-    return x
+    """Ground truth sigma^k(x), vectorized. Used ONLY to measure X, never to train it."""
+    out, k = np.array(x, copy=True), np.array(k, copy=True)
+    while (k > 0).any():
+        m = k > 0
+        out[m] = sigma[out[m]]; k[m] -= 1
+    return out
+
+def depth(k):
+    """Recursion depth of a question = the number of bits in k (1 for k = 1, ..., 5 for k = 16..31)."""
+    return np.floor(np.log2(np.maximum(k, 1))).astype(int) + 1
 
 print("sigma =", sigma)
-print("sigma^5(3) =", truth(3, 5))
+print("sigma^29(3) =", truth(3, 29), "  (a depth", depth(np.array(29)), "question)")
 
 # %% [markdown]
 # ## 1. The learner X
 #
-# X is a small neural network (one hidden layer, written in numpy so there is nothing to install). Its input is the question (x, k) as two one-hot vectors, and its output is a probability distribution over the answer.
+# X is a small neural network. Its input is the question (x, k): x as a one-hot vector and k in binary, as in the paper (App. C.1: "For permutation powering, we represent the exponent k in binary"). Its output is a probability distribution over the 16 possible answers.
 #
-# X is the "strong learner": fast, but it only knows what it has been trained on. At the start it knows nothing.
+# X is the "strong learner": it answers any question in one fast step, but it only knows what it has been trained on. At the start it knows nothing.
 
 # %%
 class MLP:
-    """Tiny classifier: one-hot(x) + one-hot(k) -> softmax over N answers. Trained with Adam."""
+    """Classifier with two hidden layers, trained with Adam."""
     def __init__(self, n_in, n_hidden, n_out, seed=0, lr=3e-3):
         r = np.random.default_rng(seed)
         self.p = {"W1": r.normal(0, 1 / np.sqrt(n_in), (n_in, n_hidden)), "b1": np.zeros(n_hidden),
-                  "W2": r.normal(0, 1 / np.sqrt(n_hidden), (n_hidden, n_out)), "b2": np.zeros(n_out)}
+                  "W2": r.normal(0, 1 / np.sqrt(n_hidden), (n_hidden, n_hidden)), "b2": np.zeros(n_hidden),
+                  "W3": r.normal(0, 1 / np.sqrt(n_hidden), (n_hidden, n_out)), "b3": np.zeros(n_out)}
         self.m = {k: np.zeros_like(v) for k, v in self.p.items()}
         self.v = {k: np.zeros_like(v) for k, v in self.p.items()}
         self.t, self.lr = 0, lr
 
     def forward(self, X):
-        h = np.maximum(0, X @ self.p["W1"] + self.p["b1"])
-        z = h @ self.p["W2"] + self.p["b2"]
+        h1 = np.maximum(0, X @ self.p["W1"] + self.p["b1"])
+        h2 = np.maximum(0, h1 @ self.p["W2"] + self.p["b2"])
+        z = h2 @ self.p["W3"] + self.p["b3"]
         z = z - z.max(1, keepdims=True)
         prob = np.exp(z); prob /= prob.sum(1, keepdims=True)
-        return h, prob
+        return h1, h2, prob
 
     def train_step(self, X, y):
-        h, prob = self.forward(X)
+        h1, h2, prob = self.forward(X)
         g = prob.copy(); g[np.arange(len(y)), y] -= 1; g /= len(y)
-        grads = {"W2": h.T @ g, "b2": g.sum(0)}
-        gh = (g @ self.p["W2"].T) * (h > 0)
-        grads.update({"W1": X.T @ gh, "b1": gh.sum(0)})
+        grads = {"W3": h2.T @ g, "b3": g.sum(0)}
+        d2 = (g @ self.p["W3"].T) * (h2 > 0); grads.update(W2=h1.T @ d2, b2=d2.sum(0))
+        d1 = (d2 @ self.p["W2"].T) * (h1 > 0); grads.update(W1=X.T @ d1, b1=d1.sum(0))
         self.t += 1
         for k in self.p:
             self.m[k] = 0.9 * self.m[k] + 0.1 * grads[k]
@@ -89,303 +106,317 @@ class MLP:
 
 def encode(x, k):
     x, k = np.atleast_1d(x), np.atleast_1d(k)
-    out = np.zeros((len(x), N + K_MAX))
+    out = np.zeros((len(x), N + BITS))
     out[np.arange(len(x)), x] = 1
-    out[np.arange(len(x)), N + k - 1] = 1
+    out[:, N:] = (k[:, None] >> np.arange(BITS)) & 1        # k in binary
     return out
 
 class Agent:
-    """X: answers the question 'sigma^k(x)?' in one fast forward pass."""
+    """X: answers 'sigma^k(x)?' in one forward pass."""
     def __init__(self, seed=0):
-        self.net = MLP(N + K_MAX, 256, N, seed=seed)
+        self.net = MLP(N + BITS, 256, N, seed=seed)
     def __call__(self, x, k):
-        return self.net.forward(encode(x, k))[1].argmax(1)
-    def fit(self, x, k, y, steps=60, batch=256):
-        X = encode(x, k)
-        for _ in range(steps):
-            idx = rng.integers(0, len(y), batch)
-            self.net.train_step(X[idx], y[idx])
+        return self.net.forward(encode(x, k))[2].argmax(1)
 
-ALL_X, ALL_K = np.meshgrid(np.arange(N), np.arange(1, K_MAX + 1), indexing="ij")
-ALL_X, ALL_K = ALL_X.ravel(), ALL_K.ravel()
-TRUE = np.array([truth(x, k) for x, k in zip(ALL_X, ALL_K)])
+ALL_X, ALL_K = [a.ravel() for a in np.meshgrid(np.arange(N), np.arange(1, 2 ** BITS), indexing="ij")]
+TRUE = truth(ALL_X, ALL_K)           # all 16 x 31 = 496 questions, for measuring only
 
-def accuracy_by_k(agent):
+def accuracy_by_depth(agent):
     correct = agent(ALL_X, ALL_K) == TRUE
-    return np.array([correct[ALL_K == k].mean() for k in range(1, K_MAX + 1)])
+    d = depth(ALL_K)
+    return np.array([correct[d == i].mean() for i in range(1, BITS + 1)])
 
-X0 = Agent()
-print("Untrained X, accuracy for k = 1..8:", accuracy_by_k(X0)[:8].round(2))
+print("Untrained X, accuracy at depths 1..5:", accuracy_by_depth(Agent()).round(2))
 
 # %% [markdown]
 # ## 2. The weak expert H and the Amplify operator
 #
-# > "Amplify(X) answers a question Q by having H identify a sequence of useful subquestions, using X to compute a subanswer to each subquestion" (§1.1)
+# > "Amplify^H(X) answers a question Q by having H identify a sequence of useful subquestions, using X to compute a subanswer to each subquestion" (§1.1)
 #
-# Our H follows the paper's decomposition for this task, which halves the exponent (App. C.3): to answer σᵏ(x) it asks X for y = σ^⌊k/2⌋(x), then asks X for σ^⌈k/2⌉(y). When k = 1, H reads σ(x) straight from the context. Those base-case lookups are the only "oracle calls" in the whole method, and we count them.
+# H follows the paper's decomposition for this task (Table 3):
 #
-# Notice that H never does more than one lookup or two delegated questions, however large k is. That is the point: H stays weak.
+# - σ^{2m}(x) = σ^m(σ^m(x)): ask X for y = σ^m(x), then ask X for σ^m(y).
+# - σ^{2m+1}(x) = σ(σ^m(σ^m(x))): the same, then H looks up one more step of σ itself.
+# - σ^1(x): H looks it up.
+#
+# H never does more than two delegated questions and one lookup, however large k is. That is the point: H stays weak. We count every time H is asked, and every lookup of σ it makes.
 
 # %%
-ORACLE_CALLS = 0
+COUNT = {"H": 0, "lookups": 0}
 
-def lookup(x, noise=0.0):
-    """H reads sigma(x) from the context. With probability `noise` H misreads it."""
-    global ORACLE_CALLS
-    x = np.atleast_1d(x)
-    ORACLE_CALLS += len(x)
-    y = sigma[x].copy()
-    wrong = rng.random(len(x)) < noise
-    y[wrong] = rng.integers(0, N, wrong.sum())
-    return y
+def lookup(x):
+    """H reads sigma(x) for one x: the only access to the task anyone gets during training."""
+    COUNT["lookups"] += len(np.atleast_1d(x))
+    return sigma[x]
 
-def amplify(X, x, k, noise=0.0):
-    """Amplify^H(X): H decomposes 'sigma^k(x)?' and delegates the pieces to copies of X."""
+def amplify(X, x, k):
+    """Amplify^H(X): H splits 'sigma^k(x)?' into subquestions, and copies of X answer them."""
     x, k = np.atleast_1d(x), np.atleast_1d(k)
+    COUNT["H"] += len(x)
     ans = np.empty_like(x)
     base = k == 1
-    ans[base] = lookup(x[base], noise)                    # H answers the easy case itself
-    a = k[~base] // 2; b = k[~base] - a
-    y = X(x[~base], a)                                    # subquestion 1, answered by X
-    ans[~base] = X(y, b)                                  # subquestion 2, answered by X
+    ans[base] = lookup(x[base])                        # H answers the base case itself
+    xs, ks = x[~base], k[~base]
+    m = ks // 2
+    z = X(X(xs, m), m)                                 # two subquestions, each answered by X
+    odd = ks % 2 == 1
+    z[odd] = lookup(z[odd])                            # odd k: one more step of sigma, by H
+    ans[~base] = z
     return ans
 
-# A tiny transcript, in the paper's format tau = (Q, Q1, A1, Q2, A2, A) (§2.2), for an untrained X:
-x, k = 3, 6
-a, b = k // 2, k - k // 2
-y = X0(x, a)[0]
+# A transcript in the paper's format (Q, Q1, A1, Q2, A2, A) (§2.2), with an untrained X:
+X0 = Agent()
+x, k = 3, 29
+m = k // 2
+a1 = int(X0(x, m)[0]); a2 = int(X0(a1, m)[0])
 print(f"Q : sigma^{k}({x})?")
-print(f"Q1: sigma^{a}({x})?   A1 (from X): {y}")
-print(f"Q2: sigma^{b}({y})?   A2 (from X): {X0(y, b)[0]}")
+print(f"Q1: sigma^{m}({x})?    A1 (from X): {a1}")
+print(f"Q2: sigma^{m}({a1})?   A2 (from X): {a2}")
+print(f"H : k is odd, so look up sigma({a2}) = {sigma[a2]}")
 print(f"A : {amplify(X0, x, k)[0]}   (truth: {truth(x, k)})")
 
 # %% [markdown]
-# ## 3. Iterate: distill Amplify(X) into X, repeat
+# The untrained X gives nonsense subanswers, so the team's answer is wrong. That is expected. What matters is what happens when X is trained to imitate the team, again and again.
 #
-# The training loop (§2.2, simplified by dropping the learned model H′ of the human):
+# ## 3. The training loop
+#
+# The paper's loop (§2.2), without the learned model H′ of the human:
 #
 # 1. Sample questions Q.
 # 2. Run Amplify^H(X) on them to get answers A.
 # 3. Train X by supervised learning on the (Q, A) pairs.
+# 4. Repeat.
 #
-# We also use a curriculum like the paper's (App. C.2: difficulty rises "when accuracy reaches 85%"), with one twist worth noticing: we measure progress by how often **X agrees with Amplify(X)**, which needs no ground truth at all.
+# Two details come from the paper's appendices:
+#
+# - **Question distribution** (App. C.4): the paper picks the leading bit of k at random, so every depth gets about the same share of questions.
+# - **Curriculum** (App. C.2): "Whenever X achieves an accuracy of at least 85% at predicting the (Q,A) pairs in its dataset, we increment the difficulty." Our difficulty is the largest depth allowed. This check needs **no ground truth**: it compares X with its own training targets.
 
 # %%
-def iterated_amplification(rounds=30, noise=0.0, amplify_fn=amplify, seed=0, verbose=True, threshold=0.85):
-    global ORACLE_CALLS
-    ORACLE_CALLS = 0
+def sample_questions(n, difficulty):
+    """Questions whose depth is at most `difficulty`, half of them at the current difficulty."""
+    lead = np.where(rng.random(n) < 0.5, difficulty, rng.integers(1, difficulty + 1, n))   # leading bit of k
+    low = 2 ** (lead - 1)
+    return rng.integers(0, N, n), low + (rng.random(n) * low).astype(int)
+
+def iterated_amplification(rounds=25, amplify_fn=amplify, seed=0, threshold=0.85, verbose=True,
+                           n=2048, steps=60, batch=256, keep_rounds=3):
+    COUNT.update(H=0, lookups=0)
     X = Agent(seed)
-    k_cap, history, calls = 1, [], []
+    difficulty, data, log = 1, [], []
     for r in range(rounds):
-        xs = rng.integers(0, N, 2048)
-        ks = rng.integers(1, k_cap + 1, 2048)
-        targets = amplify_fn(X, xs, ks, noise)            # the amplified overseer's answers
-        X.fit(xs, ks, targets)                            # distillation
-        agree = (X(xs, ks) == amplify_fn(X, xs, ks, noise)).mean()
-        if agree > threshold and k_cap < K_MAX:
-            k_cap = min(2 * k_cap, K_MAX)
-        history.append(accuracy_by_k(X)); calls.append(ORACLE_CALLS)
+        xs, ks = sample_questions(n, difficulty)
+        data.append((xs, ks, amplify_fn(X, xs, ks)))      # 1-2. the amplified team's answers
+        data = data[-keep_rounds:]                         # keep the last few rounds of (Q, A) pairs
+        dx, dk, dy = (np.concatenate(c) for c in zip(*data))
+        enc = encode(dx, dk)
+        for _ in range(steps):                             # 3. distill: train X to imitate the team
+            i = rng.integers(0, len(dy), batch)
+            X.net.train_step(enc[i], dy[i])
+        fit = (X(xs, ks) == data[-1][2]).mean()           # X vs. its own targets: no ground truth
+        if fit >= threshold and difficulty < BITS:
+            difficulty += 1                                # the curriculum (App. C.2)
+        log.append(dict(round=r + 1, difficulty=difficulty, fit=fit, acc_x=accuracy_by_depth(X),
+                        H=COUNT["H"], lookups=COUNT["lookups"]))
         if verbose and (r < 8 or r % 5 == 4):
-            print(f"round {r+1:2d}  k_cap={k_cap:2d}  agreement={agree:.2f}  "
-                  f"true accuracy (all k)={history[-1].mean():.2f}  oracle calls so far={ORACLE_CALLS}")
-    return X, np.array(history), calls
+            print(f"round {r+1:2d}  difficulty {difficulty}  X fits its targets {fit:4.0%}  "
+                  f"true accuracy by depth {np.round(log[-1]['acc_x'], 2)}")
+    return X, log
 
-X_amp, hist, calls = iterated_amplification()
+X_amp, log_amp = iterated_amplification()
+
+# %% [markdown]
+# ## 4. The frontier moves outward
+#
+# The heatmap shows X's true accuracy at each depth after each round. Depth 1 means k = 1; depth 5 means k between 16 and 31.
 
 # %%
-plt.figure(figsize=(9, 3.5))
-plt.imshow(hist.T, aspect="auto", origin="lower", cmap="viridis", vmin=0, vmax=1,
-           extent=[0.5, len(hist) + 0.5, 0.5, K_MAX + 0.5])
+SHARE = np.array([(depth(ALL_K) == i).mean() for i in range(1, BITS + 1)])   # share of questions at each depth
+acc = np.array([l["acc_x"] for l in log_amp])
+plt.figure(figsize=(9, 3.2))
+plt.imshow(acc.T, aspect="auto", origin="lower", cmap="viridis", vmin=0, vmax=1,
+           extent=[0.5, len(acc) + 0.5, 0.5, BITS + 0.5])
 plt.colorbar(label="accuracy vs. ground truth")
-plt.xlabel("amplification round"); plt.ylabel("k (question difficulty)")
-plt.title("The frontier of questions X can answer moves outward")
+plt.xlabel("round"); plt.ylabel("depth (bits in k)")
+plt.title("What X can answer, round by round")
 plt.show()
+print(f"Final accuracy over all {len(TRUE)} questions: {np.mean(X_amp(ALL_X, ALL_K) == TRUE):.0%}")
 
 # %% [markdown]
-# **What to look for.** Early rounds only get k = 1 and 2 right. Each round, X learns to answer slightly harder questions, because Amplify(X) could answer them using the previous X. Questions with k = 32 are answered correctly even though H only ever looked up a single step of σ.
+# This is the dynamic the paper describes in §2.3. At first X answers randomly, and only the questions H can answer alone (depth 1) come out right. X learns those. Then H can answer depth-2 questions by splitting them, X learns those, and so on. By the end X answers 31-shuffle questions, although H never looked at more than one shuffle at a time.
 #
-# > "X starts random; H answers simple questions alone; X copies those; the frontier moves outward." (our paraphrase of §2.3)
-
-# %% [markdown]
-# ## 4. Compare with supervised learning on ground truth
+# ## 5. Compare with supervised learning (the idea of the paper's Fig. 2)
 #
-# The paper reports that amplification solves its tasks "with at worst a modest slowdown" (§4.2) compared to training on true labels. Here the cost that matters is the number of times anyone consults the true σ. Supervised learning needs a true label for every training question. Amplification only consults σ for k = 1.
+# Fig. 2 compares "Iterated Amplification (orange) and supervised learning from the ground truth data (blue)". The paper's result is that amplification solves its tasks "with at worst a modest slowdown" (§4.2). We train the same network on the same questions, with true answers as targets.
 
 # %%
-X_sup = Agent(seed=1)
-sup_acc, sup_labels = [], []
-for r in range(len(hist)):
-    xs = rng.integers(0, N, 2048); ks = rng.integers(1, K_MAX + 1, 2048)
-    X_sup.fit(xs, ks, np.array([truth(x, k) for x, k in zip(xs, ks)]))
-    sup_acc.append(accuracy_by_k(X_sup).mean()); sup_labels.append(2048 * (r + 1))
+def supervised(rounds=25, seed=1, n=2048, steps=60, batch=256, keep_rounds=3):
+    X = Agent(seed); difficulty, data, curve = 1, [], []
+    for r in range(rounds):
+        xs, ks = sample_questions(n, difficulty)
+        data.append((xs, ks, truth(xs, ks)))              # ground-truth labels
+        data = data[-keep_rounds:]
+        dx, dk, dy = (np.concatenate(c) for c in zip(*data))
+        enc = encode(dx, dk)
+        for _ in range(steps):
+            i = rng.integers(0, len(dy), batch)
+            X.net.train_step(enc[i], dy[i])
+        if (X(xs, ks) == data[-1][2]).mean() >= 0.85 and difficulty < BITS:
+            difficulty += 1
+        curve.append(np.mean(X(ALL_X, ALL_K) == TRUE))
+    return curve
 
+sup_curve = supervised()
+amp_curve = [(l["acc_x"] * SHARE).sum() for l in log_amp]
 plt.figure(figsize=(6, 3.5))
-plt.plot(hist.mean(1), label="iterated amplification (H + X)")
-plt.plot(sup_acc, label="supervised on ground truth")
-plt.xlabel("round"); plt.ylabel("mean accuracy over k = 1..32"); plt.legend(); plt.show()
-print(f"Ground-truth labels used by supervised learning: {sup_labels[-1]:,}")
-print(f"Base-case lookups used by amplification:        {calls[-1]:,}")
-print("Note: each supervised label for k=32 secretly costs 32 lookups of sigma.")
+plt.plot(range(1, len(amp_curve) + 1), amp_curve, color="tab:orange", label="iterated amplification")
+plt.plot(range(1, len(sup_curve) + 1), sup_curve, color="tab:blue", label="supervised on ground truth")
+plt.xlabel("round"); plt.ylabel("accuracy on all questions"); plt.ylim(0, 1.02)
+plt.legend(); plt.title("Amplification vs. supervised learning"); plt.show()
+
+first = lambda curve: next((r + 1 for r, a in enumerate(curve) if a >= 0.95), None)
+print(f"Rounds to reach 95%: supervised {first(sup_curve)}, amplification {first(amp_curve)}")
 
 # %% [markdown]
-# ## 5. When the overseer makes mistakes: do errors compound?
+# Amplification gets there a few rounds later, which is the paper's "modest slowdown". The real difference is what each method needed from outside:
 #
-# Real overseers make mistakes. σ³²(x) is built from 32 lookups stacked through several levels of decomposition, so if H misreads σ(x) now and then, does the error grow with k?
+# - **Supervised learning** needed a correct answer to every hard question it trained on. Computing σ^29(x) takes 29 lookups, so each label hides a lot of work by someone who could already solve the task.
+# - **Amplification** never saw a correct answer to a hard question. It needed only H: one split and at most one lookup per question.
 #
-# This is the question Leike et al. ask of recursive reward modeling: "do the mistakes of the more narrow agent A_{k-1} lead to larger mistakes in the training of agent A_k?" (§3.2). In SRC's criterion v1.1 language (C2c), we want to classify the per-level error map as **contracting, thresholded, compounding or cascading**.
+# In the paper's words: "Supervised learning required tens of millions of examples in order to learn these algorithms" (§4.2). That is the scalable oversight point. If nobody can produce correct answers to the hard questions, supervised learning is not available, and amplification still is.
 #
-# ### 5a. Random mistakes
+# ## 6. Beyond the paper: what if H makes mistakes?
 #
-# First, H misreads σ(x) **at random**: 10% of lookups return a random number. The dashed line is what you would expect if every one of the k lookups had to be right.
+# The paper's H is a perfect algorithm. A human overseer is not. This section is **our extension**, not something the paper tests. It asks the question Leike et al. raise about recursive reward modeling: "do the mistakes of the more narrow agent A_{k-1} lead to larger mistakes in the training of agent A_k?" (Leike et al. 2018, §3.2).
+#
+# We try two kinds of mistakes in H's lookups:
+#
+# - **Random**: 10% of lookups return a random number.
+# - **Systematic**: for 2 of the 16 inputs, H always reads the same wrong value (a blind spot).
 
 # %%
-X_noisy, hist_noisy, _ = iterated_amplification(noise=0.10, verbose=False)
-ks = np.arange(1, K_MAX + 1)
-plt.figure(figsize=(6, 3.5))
-plt.plot(ks, 1 - hist[-1], "o-", label="H never wrong")
-plt.plot(ks, 1 - hist_noisy[-1], "o-", label="H wrong on 10% of lookups, at random")
-plt.plot(ks, 1 - 0.9 ** ks, "k--", label="1 - 0.9^k (every lookup must be right)")
-plt.xlabel("k"); plt.ylabel("error of final X"); plt.legend(); plt.show()
+def make_amplify(noise=0.0, blind_spots=0, split="halve"):
+    blind = {int(sigma[i]): int((sigma[sigma[i]] + 1) % N) for i in range(blind_spots)}
+    def bad_lookup(x):
+        COUNT["lookups"] += len(x)
+        y = sigma[x].copy()
+        wrong = rng.random(len(x)) < noise
+        y[wrong] = rng.integers(0, N, wrong.sum())
+        for b, w in blind.items():
+            y[x == b] = w
+        return y
+    def amp(X, x, k):
+        x, k = np.atleast_1d(x), np.atleast_1d(k)
+        COUNT["H"] += len(x)
+        ans = np.empty_like(x); base = k == 1
+        ans[base] = bad_lookup(x[base])
+        xs, ks = x[~base], k[~base]
+        if split == "halve":
+            m = ks // 2
+            z = X(X(xs, m), m); odd = ks % 2 == 1
+            z[odd] = bad_lookup(z[odd])
+        else:                                             # "peel one": sigma^k(x) = sigma(sigma^(k-1)(x))
+            z = bad_lookup(X(xs, ks - 1))
+        ans[~base] = z
+        return ans
+    return amp, set(blind)
 
-# %% [markdown]
-# Surprise: the error is (close to) zero. X sees each question many times, and a model trained with cross-entropy learns the *most common* answer, so independent mistakes average out before they are passed up a level. Distillation is a denoiser. For random errors the map is **contracting**.
-#
-# ### 5b. Systematic mistakes
-#
-# Now H has a blind spot: for two particular inputs it *always* misreads σ(x), the same wrong way every time. Real overseers have biases like this.
+amp_random, _ = make_amplify(noise=0.10)
+amp_blind, BLIND = make_amplify(blind_spots=2)
+X_random, log_random = iterated_amplification(amplify_fn=amp_random, threshold=0.85 * 0.9, verbose=False)
+X_blind, log_blind = iterated_amplification(amplify_fn=amp_blind, verbose=False)
 
-# %%
-BLIND = [int(sigma[0]), int(sigma[5])]       # two inputs H always gets wrong
-WRONG = {x: int((sigma[x] + 1) % N) for x in BLIND}
-
-def lookup_biased(x, noise=0.0):
-    global ORACLE_CALLS
-    x = np.atleast_1d(x)
-    ORACLE_CALLS += len(x)
-    y = sigma[x].copy()
-    for b, w in WRONG.items():
-        y[x == b] = w
-    return y
-
-def amplify_biased(X, x, k, noise=0.0):
-    x, k = np.atleast_1d(x), np.atleast_1d(k)
-    ans = np.empty_like(x)
-    base = k == 1
-    ans[base] = lookup_biased(x[base])
-    a = k[~base] // 2; b = k[~base] - a
-    ans[~base] = X(X(x[~base], a), b)
-    return ans
-
-X_bias, hist_bias, _ = iterated_amplification(amplify_fn=amplify_biased, verbose=False)
-
-# Prediction: a question goes wrong if the true path x, sigma(x), ..., sigma^(k-1)(x) visits a blind spot.
-def hits_blind_spot(x, k):
+def touches_blind_spot(x, k):
+    """Does the true path x, sigma(x), ..., sigma^(k-1)(x) pass through a blind spot?"""
     for _ in range(k):
-        if x in BLIND:
-            return True
+        if x in BLIND: return True
         x = sigma[x]
     return False
-predicted = [np.mean([hits_blind_spot(x, k) for x in range(N)]) for k in ks]
+predicted = [np.mean([touches_blind_spot(x, k) for x, k in zip(ALL_X, ALL_K) if depth(k) == d])
+             for d in range(1, BITS + 1)]
 
+ds = np.arange(1, BITS + 1)
 plt.figure(figsize=(6, 3.5))
-plt.plot(ks, 1 - hist_noisy[-1], "o-", label="random mistakes (10%)")
-plt.plot(ks, 1 - hist_bias[-1], "o-", label="systematic mistakes (2 of 16 inputs)")
-plt.plot(ks, predicted, "k--", label="fraction of paths that touch a blind spot")
-plt.xlabel("k"); plt.ylabel("error of final X"); plt.legend(); plt.show()
-print(f"H's base-case error rate: {len(BLIND)/N:.0%} of inputs.  Error of X at k=1: {1-hist_bias[-1][0]:.0%}, "
-      f"at k=32: {1-hist_bias[-1][-1]:.0%}")
+plt.plot(ds, 1 - log_amp[-1]["acc_x"], "o-", label="H never wrong")
+plt.plot(ds, 1 - log_random[-1]["acc_x"], "o-", label="random mistakes (10% of lookups)")
+plt.plot(ds, 1 - log_blind[-1]["acc_x"], "o-", label="blind spot (2 of 16 inputs)")
+plt.plot(ds, predicted, "k--", label="share of questions whose path\npasses a blind spot")
+plt.xticks(ds); plt.xlabel("depth"); plt.ylabel("error of the final X"); plt.ylim(-0.02, 1.02); plt.legend(fontsize=8); plt.show()
 
 # %% [markdown]
-# H is wrong on only 12.5% of single lookups, but X ends up wrong on about half of the hard questions, because every long chain of reasoning that passes through a blind spot inherits the mistake. Averaging cannot fix an error that is the same every time. For systematic errors the map is **compounding**: per-level error grows with depth until it saturates at the share of questions whose path ever reaches a blind spot (here σ's cycle structure caps that at one half).
+# Random mistakes almost vanish. X sees each question many times, and training with cross-entropy learns the *most common* answer, so independent mistakes average out before they get passed up a level.
 #
-# **Takeaway for the talk:** amplification is only as good as the overseer's *correlated* errors. Random sloppiness is cheap; a consistent blind spot is spread to every question that depends on it.
+# A blind spot does not average out. It is wrong the same way every time, so every question whose chain of shuffles passes through it inherits the mistake, and the error grows with depth along the dashed line. H is wrong on 2 of 16 inputs, but X ends up wrong on far more of the deepest questions.
+#
+# **Takeaway:** distillation removes random noise and faithfully copies consistent bias, to every question built on top of it.
 
 # %% [markdown]
-# ## 6. 🎛 Explore
+# ## 7. 🎛 Explore
 #
-# ### 6a. Ask the amplified team a question
+# ### 7a. Ask the amplified team a question
 #
-# Pick a starting number x and a number of shuffles k. You'll see the decomposition H would use, with the trained X's answer at every node, checked against the truth. (This uses `X_amp`, the network trained in section 3.)
+# Pick x and k. You'll see H's decomposition with the trained X's answer at every node, checked against the truth. (This uses `X_amp` from section 3.)
 
 # %%
 import ipywidgets as widgets
 
-def show_tree(x=3, k=13, depth_limit=4):
-    def walk(x, k, depth):
+def show_tree(x=3, k=29, levels=3):
+    def walk(x, k, level):
         guess, true = int(X_amp(x, k)[0]), int(truth(x, k))
         mark = "✓" if guess == true else f"✗ (truth {true})"
-        pad = "    " * depth
+        pad = "    " * level
         if k == 1:
-            print(f"{pad}σ^1({x}) = {guess} {mark}   ← H looks this up")
-            return
-        a, b = k // 2, k - k // 2
-        y = int(X_amp(x, a)[0])
-        print(f"{pad}σ^{k}({x}) = {guess} {mark}   H splits into σ^{a}({x}) then σ^{b}({y})")
-        if depth + 1 < depth_limit:
-            walk(x, a, depth + 1); walk(y, b, depth + 1)
+            print(f"{pad}σ^1({x}) = {guess} {mark}   ← H looks this up"); return
+        m = k // 2
+        y = int(X_amp(x, m)[0])
+        extra = ", then H looks up σ of the result" if k % 2 else ""
+        print(f"{pad}σ^{k}({x}) = {guess} {mark}   H asks σ^{m}({x}) and σ^{m}({y}){extra}")
+        if level + 1 < levels:
+            walk(x, m, level + 1); walk(y, m, level + 1)
     walk(x, k, 0)
 
 widgets.interact(show_tree,
                  x=widgets.IntSlider(value=3, min=0, max=N - 1, description="x"),
-                 k=widgets.IntSlider(value=13, min=1, max=K_MAX, description="k shuffles"),
-                 depth_limit=widgets.IntSlider(value=3, min=1, max=6, description="show levels"));
+                 k=widgets.IntSlider(value=29, min=1, max=2 ** BITS - 1, description="k shuffles"),
+                 levels=widgets.IntSlider(value=3, min=1, max=5, description="show levels"));
 
 # %% [markdown]
-# ### 6b. Run your own experiment
+# ### 7b. Run your own experiment
 #
-# Set up the overseer, then click **Run Interact**. Training takes a few seconds. Try these:
+# Set up the overseer, then click **Run Interact** (a few seconds). Things to try:
 #
-# - **Random mistakes**: how high can the mistake rate go before X stops learning?
-# - **Blind spots**: does the damage grow with the number of blind spots, or with k?
-# - **Decomposition**: "peel one" splits k into 1 + (k − 1) instead of halving. How many rounds does it need now?
+# - **Random mistakes**: how high can the rate go before X stops learning?
+# - **Blind spots**: does the damage grow with the number of blind spots, or with depth?
+# - **Decomposition**: "peel one" uses σ^k(x) = σ(σ^(k−1)(x)) instead of halving. How many rounds does it need now?
 
 # %%
-def make_amplify(split="halve", noise=0.0, blind_spots=0):
-    blind = {int(sigma[i]): int((sigma[sigma[i]] + 1) % N) for i in range(blind_spots)}
-    def amp(X, x, k, _noise=0.0):
-        global ORACLE_CALLS
-        x, k = np.atleast_1d(x), np.atleast_1d(k)
-        ans = np.empty_like(x)
-        base = k == 1
-        xb = x[base]; ORACLE_CALLS += len(xb)
-        y = sigma[xb].copy()
-        wrong = rng.random(len(xb)) < noise
-        y[wrong] = rng.integers(0, N, wrong.sum())
-        for b, w in blind.items():
-            y[xb == b] = w
-        ans[base] = y
-        kk = k[~base]
-        a = kk // 2 if split == "halve" else np.ones_like(kk)
-        ans[~base] = X(X(x[~base], a), kk - a)
-        return ans
-    return amp
-
-def experiment(mistakes="random", rate=0.10, blind_spots=2, split="halve", rounds=30):
-    amp = make_amplify(split, rate if mistakes == "random" else 0.0,
-                       blind_spots if mistakes == "blind spots" else 0)
+def experiment(mistakes="random", rate=0.10, blind_spots=2, split="halve", rounds=25):
+    amp, _ = make_amplify(noise=rate if mistakes == "random" else 0.0,
+                          blind_spots=blind_spots if mistakes == "blind spots" else 0, split=split)
     thr = 0.85 * (1 - (rate if mistakes == "random" else 0))   # so the curriculum can still advance
-    _, h, calls = iterated_amplification(rounds=rounds, amplify_fn=amp, verbose=False, threshold=thr)
-    fig, axes = plt.subplots(1, 2, figsize=(12, 3.5))
-    axes[0].imshow(h.T, aspect="auto", origin="lower", cmap="viridis", vmin=0, vmax=1,
-                   extent=[0.5, len(h) + 0.5, 0.5, K_MAX + 0.5])
-    axes[0].set_xlabel("round"); axes[0].set_ylabel("k"); axes[0].set_title("accuracy by round (yellow = right)")
-    axes[1].plot(ks, 1 - h[-1], "o-"); axes[1].set_ylim(-0.02, 1.02)
-    axes[1].set_xlabel("k"); axes[1].set_ylabel("error"); axes[1].set_title("error of the final X")
+    _, log = iterated_amplification(rounds=rounds, amplify_fn=amp, verbose=False, threshold=thr)
+    a = np.array([l["acc_x"] for l in log])
+    fig, axes = plt.subplots(1, 2, figsize=(12, 3.4))
+    axes[0].imshow(a.T, aspect="auto", origin="lower", cmap="viridis", vmin=0, vmax=1,
+                   extent=[0.5, len(a) + 0.5, 0.5, BITS + 0.5])
+    axes[0].set_xlabel("round"); axes[0].set_ylabel("depth"); axes[0].set_title("accuracy by round (yellow = right)")
+    axes[1].plot(ds, 1 - a[-1], "o-"); axes[1].set_ylim(-0.02, 1.02); axes[1].set_xticks(ds)
+    axes[1].set_xlabel("depth"); axes[1].set_ylabel("error"); axes[1].set_title("error of the final X")
     plt.show()
-    print(f"Final accuracy over all k: {h[-1].mean():.0%}.  Lookups used: {calls[-1]:,}")
+    print(f"Final accuracy over all questions: {(a[-1] * SHARE).sum():.0%}.  H was asked {log[-1]['H']:,} times.")
 
 widgets.interact_manual(experiment,
                         mistakes=widgets.ToggleButtons(options=["none", "random", "blind spots"], value="random"),
                         rate=widgets.FloatSlider(value=0.10, min=0, max=0.6, step=0.05, description="random rate"),
                         blind_spots=widgets.IntSlider(value=2, min=0, max=8, description="# blind spots"),
                         split=widgets.Dropdown(options=["halve", "peel one"], description="H splits by"),
-                        rounds=widgets.IntSlider(value=30, min=5, max=60, step=5, description="rounds"));
+                        rounds=widgets.IntSlider(value=25, min=5, max=60, step=5, description="rounds"));
 
 # %% [markdown]
-# ## 7. Exercises
+# ## 8. Exercises
 #
-# 1. **Catch the blind spot.** H knows σ is a permutation (every output appears exactly once). Write an `amplify` that uses this to detect, or route around, a misread. Hint: the paper's H returns a special "?" symbol "when recursive results are inconsistent" (App. C); try computing σᵏ(x) along two different decompositions and compare.
-# 2. **Thresholds.** In 5a, raise `noise` to 0.2, then higher. Two things break: the curriculum stalls (X can never agree with a noisy Amplify more than about 1 − noise of the time, so `k_cap` stops growing), and eventually averaging itself stops working. Fix the first, then find the noise level where the second happens. Why does it depend on N (a *thresholded* regime)?
-# 3. **A worse decomposition.** Change `amplify` to split k into 1 + (k − 1) instead of halving. How many rounds does it take to reach k = 32 now? How does the oracle-call count change?
-# 4. **Another task.** Adapt the code to one of the paper's other tasks (§4.1), e.g. *union find*: "find the root of x's tree" in a rooted forest. What is the base case, and how should H decompose?
-# 5. **Discussion.** The paper is honest that "These experiments don't shed any light on whether humans can decompose interesting real world tasks" (§4.3). Pick a real task (grading an essay, reviewing a pull request). Could you write an H for it that only ever does a small amount of work? Where would its *systematic* blind spots be?
+# 1. **Another task from the paper.** Implement *sequential assignments* (§4.1): "Given a function f:{1,…,8}^2 → {1,…,8} and a sequence of 64 assignments of the form x:=3 or x:=f(y,z), evaluate a particular variable." Table 3's decomposition: look up the definition of x; if x := f(y,z), evaluate y, evaluate z, and look up f(y, z). What plays the role of the depth?
+# 2. **Catch the blind spot.** The paper adds a special answer "?" that H gives when the recursive answers are inconsistent or inconclusive (App. C.1). Write an `amplify` that computes σ^k(x) along two different splits, returns "?" when they disagree, and see whether that contains the blind spot.
+# 3. **A worse decomposition.** Use `split="peel one"`. How many rounds does it take now, and why does the depth of the decomposition matter so much?
+# 4. **No curriculum.** In `iterated_amplification`, start with `difficulty = BITS` instead of 1. What goes wrong, and why does the paper need the curriculum?
+# 5. **Discussion.** The paper says plainly: "These experiments don't shed any light on whether humans can decompose interesting real world tasks" (§4.3). Pick a real task (grading an essay, reviewing a pull request). Could you write an H for it that only ever does a small amount of work? Where would its *systematic* blind spots be?

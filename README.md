@@ -21,15 +21,13 @@ Going further: Barnes, [*Debate update: Obfuscated arguments problem*](https://w
 
 ## Notebooks
 
-New to the topic? Start with notebook 0. Every notebook runs on a free Colab CPU in about a minute, with no API keys and nothing to install beyond what Colab already has (numpy, scikit-learn, matplotlib).
+One notebook per paper. Each is a small toy version of the paper's own setup, built to show the paper's main idea and result, with the paper's numbers alongside for reference. Every notebook runs on a free Colab CPU in under a minute, with no API keys and nothing to install beyond what Colab already has (numpy, scikit-learn, matplotlib, ipywidgets).
 
 | # | Notebook | What you do | Paper |
 |---|---|---|---|
-| 0 | **[Start here](notebooks/00_start_here.ipynb)** [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/AI-Alignment-UIUC/Scalable-Oversight-Workshop/blob/main/notebooks/00_start_here.ipynb) | A gentle walkthrough of all three ideas with one running example: checking the total of a 1,024-line ledger when you can only add two numbers at a time. Predict-then-run questions, a debate you can judge yourself, no ML. **Interactive:** judge a debate yourself by clicking which half to dispute; play the crooked bookkeeper against two kinds of audit. | All three |
-| 1 | [Iterated amplification](notebooks/01_iterated_amplification.ipynb) [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/AI-Alignment-UIUC/Scalable-Oversight-Workshop/blob/main/notebooks/01_iterated_amplification.ipynb) | Train a network to compute σᵏ(x) when the "human" can only look up one step and split questions in two. Then give the human random vs. systematic blind spots and watch which ones compound. **Interactive:** step through how the amplified team answers any question; set the overseer's mistakes and decomposition, then retrain. | Christiano et al. §§1–4 |
-| 2 | [Debate as path-halving](notebooks/02_debate_reachability.ipynb) [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/AI-Alignment-UIUC/Scalable-Oversight-Workshop/blob/main/notebooks/02_debate_reachability.ipynb) | Two debaters argue whether a maze cell is reachable; a judge who checks only one step decides. See why a weak opponent lets lies through, and a toy version of obfuscated arguments. **Interactive:** play Bob against a possibly lying Alice on the maze; rerun debates with your own claim length and opponent. | Irving et al. §2; Iliad §11 |
-| 3 | [The pixel game](notebooks/03_debate_pixels.ipynb) [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/AI-Alignment-UIUC/Scalable-Oversight-Workshop/blob/main/notebooks/03_debate_pixels.ipynb) | A judge that sees 4 pixels of a digit goes from ~30% to ~70% accuracy when an honest and a lying debater pick which pixels to reveal. **Interactive:** judge pixel debates yourself and keep score against the network judge; explore any image, lie and pixel count. | Irving et al. §3.1 |
-| 4 | [Recursive reward modeling](notebooks/04_recursive_reward_modeling.ipynb) [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/AI-Alignment-UIUC/Scalable-Oversight-Workshop/blob/main/notebooks/04_recursive_reward_modeling.ipynb) | Learn a reward model from snippet comparisons, build evaluators for longer documents recursively, then optimize against them and watch the optimizer break every seam nobody checks. **Interactive:** hand-write a document to fool the evaluator; change the feedback budget, user noise and seam checks, then re-optimize. | Leike et al. §3.2 |
+| 1 | [Iterated amplification](notebooks/01_iterated_amplification.ipynb) [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/AI-Alignment-UIUC/Scalable-Oversight-Workshop/blob/main/notebooks/01_iterated_amplification.ipynb) | The paper's first task, permutation powering, at small size. A "human" H who can only look up one step of σ and split a question in two trains a network to compute σᵏ(x), using the paper's decomposition and 85% curriculum. Compare with supervised learning on true answers, then give H random vs. systematic mistakes and watch which ones spread. **Interactive:** step through how the amplified team answers any question; set the overseer's mistakes and decomposition, then retrain. | Christiano et al. §§1–4, App. C |
+| 2 | [Debate: the pixel game](notebooks/02_debate.ipynb) [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/AI-Alignment-UIUC/Scalable-Oversight-Workshop/blob/main/notebooks/02_debate.ipynb) | The paper's MNIST experiment on small 8×8 digits, with its rules: a judge trained on 6 random nonzero pixels, debaters who reveal one pixel per turn, precommit. The judge alone is right about 56% of the time; debate with precommit lifts it to about 90%, and moving second helps, as in the paper's Table 2. **Interactive:** judge debates yourself and keep score against the network judge; explore any image, lie, pixel count and rule. | Irving et al. §§2–3.1 |
+| 3 | [Recursive reward modeling](notebooks/03_recursive_reward_modeling.ipynb) [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/AI-Alignment-UIUC/Scalable-Oversight-Workshop/blob/main/notebooks/03_recursive_reward_modeling.ipynb) | Learn a reward model from snippet comparisons, build assisted evaluators for longer documents, then train an agent against the frozen evaluator: its score rises while true quality falls, the shape of the paper's Fig. 4. The paper's fix, feedback while the agent trains (§5.1), closes the gap. **Interactive:** hand-write a document to fool the evaluator; change the feedback budget, user noise and seam checks, then re-optimize. | Leike et al. §§3–5 |
 
 Each notebook has a 🎛 **Explore** section with sliders, buttons and small games (built with ipywidgets, which Colab supports out of the box), and ends with exercises, from quick tweaks to starting points for a project. Run all cells first (Runtime → Run all), then scroll to the controls.
 
@@ -37,7 +35,7 @@ Each notebook has a 🎛 **Explore** section with sliders, buttons and small gam
 
 ## Workshop materials
 
-- **Slides** (22, with speaker notes): [`presentation/slides.pdf`](presentation/slides.pdf) to read or project; [`presentation/slides.html`](presentation/slides.html) to present from a browser (download and open it; ← → to move, N for notes, F for full screen); [`presentation/speaker-notes.md`](presentation/speaker-notes.md). The editable sources are in [`presentation/deck/`](presentation/deck/); rebuild the HTML and notes with `python tools/build_slides.py`.
+- **Slides** (with speaker notes): [`presentation/slides.pdf`](presentation/slides.pdf) to read or project; [`presentation/slides.html`](presentation/slides.html) to present from a browser (download and open it; ← → to move, N for notes, F for full screen); [`presentation/speaker-notes.md`](presentation/speaker-notes.md). The editable sources are in [`presentation/deck/`](presentation/deck/); rebuild the HTML and notes with `python tools/build_slides.py`.
 - [`presentation/outline.md`](presentation/outline.md): timed agenda and slide-by-slide outline, with quotes and section numbers.
 - [`demo-plan.md`](demo-plan.md): what to run live, what to say, what numbers to expect, and fallbacks.
 - [`projects.md`](projects.md): ideas for starting your own scalable oversight project.
@@ -46,11 +44,9 @@ Each notebook has a 🎛 **Explore** section with sliders, buttons and small gam
 
 ```
 notebooks/
-  00_start_here.ipynb               ← open these in Colab
-  01_iterated_amplification.ipynb
-  02_debate_reachability.ipynb
-  03_debate_pixels.ipynb
-  04_recursive_reward_modeling.ipynb
+  01_iterated_amplification.ipynb   ← open these in Colab
+  02_debate.ipynb
+  03_recursive_reward_modeling.ipynb
   src/                              ← the same notebooks as plain Python (edit these)
 presentation/                     ← slides.pdf, slides.html, speaker-notes.md, outline.md, deck/ sources
 demo-plan.md

@@ -2,11 +2,11 @@
 <p class="eyebrow">Notebook 1 · live</p>
 <h2>The frontier of questions X can answer moves outward</h2>
 <div class="row" style="gap:64px">
-<div class="stat in" style="--i:0"><p class="big">8</p><p class="big-label">rounds until X answers σᵏ(x) for every k up to 32</p></div>
-<div class="stat in" style="--i:1"><p class="big acc">11k</p><p class="big-label">one-step lookups of σ used by amplification</p></div>
-<div class="stat in" style="--i:2"><p class="big">61k</p><p class="big-label">ground-truth labels used by supervised learning</p></div>
+<div class="stat in" style="--i:0"><p class="big">100%</p><p class="big-label">of the 496 questions σᵏ(x), k up to 31, after 15 rounds</p></div>
+<div class="stat in" style="--i:1"><p class="big acc">9</p><p class="big-label">rounds to reach 95%; supervised learning on true answers takes 6</p></div>
+<div class="stat in" style="--i:2"><p class="big">0</p><p class="big-label">true answers to hard questions used by amplification</p></div>
 </div>
 <div class="spacer"></div>
-<p class="body">H never does more than one lookup or two delegated questions, however large k is. Ground truth is used only to measure X.</p>
-<aside>Run section 3 live. The log shows k_cap doubling each round (2, 4, 8, 16, 32) and true accuracy climbing from about 0.2 to 1.00 by round 8. Then show the heatmap: yellow fills in from small k upward. The curriculum uses agreement between X and Amplify(X), which needs no ground truth. Supervised learning gets there in fewer rounds but each label for k=32 secretly costs 32 lookups.</aside>
+<p class="body">H never does more than two delegated questions and one lookup, however large k is. Ground truth is used only to measure X.</p>
+<aside>Run section 3 live (about 20 seconds). The difficulty climbs from 1 to 5 in four rounds, using the paper’s 85% rule, which compares X with its own training targets and needs no ground truth. Every depth reaches 100% by about round 15. Then the heatmap: yellow fills in from depth 1 upward. Section 5 is the paper’s Fig. 2 comparison: amplification is a few rounds slower than supervised learning, the paper’s “modest slowdown”, but never sees a correct answer to a hard question.</aside>
 </section>

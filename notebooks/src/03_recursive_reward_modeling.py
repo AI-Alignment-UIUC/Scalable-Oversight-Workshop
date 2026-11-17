@@ -1,17 +1,20 @@
 # %% [markdown]
-# # Notebook 4: Recursive reward modeling, and what optimizers do with blind spots
+# # Notebook 3: Recursive reward modeling
 #
 # **Scalable Oversight Workshop · AI Alignment @ Illinois**
 #
-# Paper: Leike, Krueger, Everitt, Martic, Maini & Legg (2018), [*Scalable agent alignment via reward modeling: a research direction*](https://arxiv.org/abs/1811.07871).
+# Paper: Leike, Krueger, Everitt, Martic, Maini & Legg (2018), [*Scalable agent alignment via reward modeling: a research direction*](https://arxiv.org/abs/1811.07871), §§1–5.
 #
-# Reward modeling splits alignment into two parts: learn a reward function from the user's feedback, then train an agent against it. The goal (§2): "How can we create agents that behave in accordance with the user's intentions?"
+# The question the paper starts from (§1): "How can we create agents that behave in accordance with the user's intentions?"
 #
-# The problem is that users cannot evaluate everything. Recursive reward modeling (RRM) handles that by letting earlier agents help the user evaluate (§3.2):
+# Its answer has two parts:
 #
-# > "In step k we use the agent A_{k-1} to assist the user in evaluating outcomes when training agent A_k."
+# - **Reward modeling** (§3.1): "The user trains a *reward model* to learn their intentions by providing feedback." An agent is then trained with RL against that reward model.
+# - **Recursion** (§3.2): when outcomes get too hard for the user to evaluate, earlier agents help. "In step k we use the agent A_{k-1} to assist the user in evaluating outcomes when training agent A_k." Their example is a novel, where "the user is assisted by an agent that provides auxiliary input: extracting a summary of the plotline, checking spelling and grammar, summarizing character development, assessing the flow of the prose, and so on."
 #
-# Their example is evaluating a novel, where "the user is assisted by an agent that provides auxiliary input: extracting a summary of the plotline, checking spelling and grammar, summarizing character development."
+# It all rests on an assumption (§1): "For many tasks we want to solve, evaluation of outcomes is easier than producing the correct behavior."
+#
+# This paper is a research agenda and runs no experiments of its own. Its one data figure, Fig. 4 (reproduced from Ibarz et al. 2018), shows the main way this goes wrong: "Over time the agent learns to exploit the reward model: the perceived performance (according to the reward model) increases, while the actual performance (according to the game score) plummets." This notebook builds a small toy of the whole pipeline and shows that same failure, and the fix the paper proposes.
 #
 # **Our toy.** An agent writes a "document": a sequence of 64 tokens, each a digit 0–9. The user's true preference is *flow*: a document is better the more adjacent pairs are in non-decreasing order. The catch is that the user can only directly compare **snippets of 4 tokens**. To evaluate a 64-token document, the user needs help.
 #
@@ -22,8 +25,9 @@
 # > **What you'll see**
 # > 1. A reward model learns your preference from 1,500 snippet comparisons (section 1).
 # > 2. Assisted evaluators for long documents look fine on random documents (section 2).
-# > 3. Optimizing against the naive evaluator raises its score while the real quality *falls*, by breaking the seams between chunks (section 3).
-# > 4. **Write a document yourself** to fool the evaluator, and run your own experiments (section 4).
+# > 3. An agent optimized against the frozen evaluator raises its score while the real quality *falls*, the shape of the paper's Fig. 4 (section 3).
+# > 4. The paper's fix, feedback from the user while the agent trains, closes the gap (section 4).
+# > 5. **Write a document yourself** to fool the evaluator, and run your own experiments (section 5).
 #
 # Runs in under a minute on CPU. Use **Runtime → Run all**. Needs numpy, scikit-learn, matplotlib and ipywidgets (all in Colab).
 
@@ -51,7 +55,7 @@ print(true_quality([1, 2, 2, 7]), true_quality([7, 2, 2, 1]))
 # %% [markdown]
 # ## 1. Level 0: a reward model from snippet comparisons
 #
-# Following the reward-modeling recipe, we show the user pairs of random snippets, record which one they prefer, and fit a Bradley-Terry model r(snippet) with logistic regression.
+# Following the reward-modeling recipe (§3.1), we show the user pairs of random snippets and record which one they prefer, the kind of feedback the paper calls trajectory preferences. Then we fit a reward model r(snippet) to those choices with logistic regression (a Bradley-Terry model).
 #
 # Our reward model uses one feature per possible *adjacent pair of tokens* (100 features), summed over the snippet. It does not know which pairs are "in order"; it has to learn that from the user's choices.
 
@@ -93,7 +97,7 @@ plt.show()
 # - **Naive:** add up the assistant's chunk scores and stop.
 # - **Careful:** also look *personally* at the one pair of tokens at each seam between chunks. That is one tiny comparison per seam, cheap enough for the user.
 #
-# This is the RRM structure: each level's evaluator is the user plus the previous level's assistant.
+# This is the RRM structure: each level's evaluator is the user plus the previous level's assistant, the toy version of the plot summarizer and the spell checker.
 
 # %%
 def make_evaluator(level, careful):
@@ -126,9 +130,9 @@ for name, (l, ev) in evaluators.items():
 # %% [markdown]
 # On random documents both evaluators look decent, the naive one a bit worse because it ignores the seams. If we stopped here we might conclude the naive evaluator is good enough.
 #
-# ## 3. Optimize against the evaluators
+# ## 3. Train an agent against the frozen evaluator (the paper's Fig. 4)
 #
-# Now the agent's job: produce a 64-token document that the evaluator rates highly. We use a simple optimizer (hill climbing: rewrite a short run of tokens, keep the change if the evaluator's score does not drop). Then we look at what the **true** quality turned out to be.
+# Fig. 4's setup: "The fully trained reward model from the best seed is frozen and used to train an new agent from scratch." We do the same with our level-2 evaluators. The agent's job is to produce a 64-token document that the evaluator rates highly. Our "agent" is a simple optimizer (hill climbing: rewrite a short run of tokens, keep the change if the evaluator's score does not drop). Like Fig. 4, we plot the evaluator's score in green and the **true** quality in black.
 
 # %%
 def optimize(evaluate, steps=15000, seed=0):
@@ -151,29 +155,77 @@ docs, traces = {}, {}
 for name in ("level 2, naive", "level 2, careful"):
     docs[name], traces[name] = optimize(evaluators[name][1])
 
-fig, axes = plt.subplots(1, 2, figsize=(11, 3.5))
-for name, tr in traces.items():
-    axes[0].plot(tr[:, 0] / np.abs(tr[:, 0]).max(), label=name)
-    axes[1].plot(tr[:, 1], label=name)
-axes[0].set_title("evaluator score (normalized)"); axes[1].set_title("TRUE quality (max 63)")
-for a in axes: a.set_xlabel("optimization step (x250)"); a.legend()
-plt.show()
+def fig4(ax, trace, title):
+    """Plot like the paper's Fig. 4: evaluator's score (green) and true quality (black)."""
+    steps = np.arange(len(trace)) * 250
+    ax.plot(steps, trace[:, 1], color="black", label="true quality")
+    ax.set_ylabel("true quality (max 63)"); ax.set_ylim(25, 64); ax.set_xlabel("optimization step")
+    ax2 = ax.twinx()
+    ax2.plot(steps, trace[:, 0], color="tab:green", label="evaluator's score")
+    ax2.set_ylabel("evaluator's score", color="tab:green")
+    ax.set_title(title)
+    ax.legend(handles=ax.get_lines() + ax2.get_lines(), loc="lower right", fontsize=8)
+
+fig, axes = plt.subplots(1, 2, figsize=(12, 3.6))
+fig4(axes[0], traces["level 2, naive"], "frozen naive evaluator")
+fig4(axes[1], traces["level 2, careful"], "frozen careful evaluator")
+plt.tight_layout(); plt.show()
 
 for name, d in docs.items():
     print(f"{name:18s} true quality {true_quality(d)}/63")
     print("   ", " ".join("".join(map(str, d[i:i + SNIP])) for i in range(0, DOC, SNIP)))
 
 # %% [markdown]
-# **What happened.** Both optimizers drive their evaluator's score up. Against the naive evaluator, the optimizer finds the 4-token snippet RM0 likes best and repeats it, so every chunk is perfect and **nearly every one of the 15 seams is broken** (the printout is split into 4-token chunks so you can see it). Nothing ever looked at the seams, so the optimizer was free to break them. The careful user closed that gap with 15 cheap checks, and the true quality reaches the maximum. (Look at *how* it gets there, though: a document of almost all 7s. It satisfies the stated preference perfectly and is useless, a reminder that our "true" reward was itself underspecified.)
+# **What happened.** On the left is the paper's Fig. 4 in miniature. The evaluator's score keeps climbing, while the true quality rises at first, peaks, and then falls. The optimizer found the 4-token snippet RM0 likes best and repeated it, so every chunk is perfect and **nearly every one of the 15 seams is broken** (the printout is split into 4-token chunks so you can see it). Nothing ever looked at the seams.
 #
-# Look at the naive curve on the right: true quality peaks early, then *falls* while the evaluator's score keeps rising. That is Goodhart's law in one plot.
+# This is what the paper calls reward hacking (§4.3), "an effect that lets the agent get more reward than intended by exploiting loopholes in the process determining the reward". Here the loophole is in the assistance: the decomposition of the evaluation left gaps, and the optimizer found them. Each level of recursion adds new seams, which is why the paper leaves this open (§3.2): "An important open question is whether errors accumulate: do the mistakes of the more narrow agent A_{k-1} lead to larger mistakes in the training of agent A_k?"
 #
-# This is the core worry about any learned or assisted evaluator: **an optimizer finds exactly the parts of the outcome that nobody evaluates.** Each level of recursion adds new seams. Leike et al. name this as an open question (§3.2): "An important open question is whether errors accumulate: do the mistakes of the more narrow agent A_{k-1} lead to larger mistakes in the training of agent A_k?"
+# On the right, a user who knew where the seams were checked each one directly, and the gap closed. But that needed the user to know in advance where the loophole would be.
 
 # %% [markdown]
-# ## 4. 🎛 Explore
+# ## 4. The paper's fix: feedback while the agent trains
 #
-# ### 4a. Write a document that fools the evaluator
+# The paper's diagnosis of Fig. 4 (§5.1): "Preliminary experiments show failure modes when the reward model is not trained online, i.e. in parallel with the agent". With a frozen model, "loopholes in the reward model that the agent discovers cannot be corrected." Its proposal: "If we provide the agent with reward feedback online, we get a tighter feedback loop between the user's feedback and the agent's behavior."
+#
+# In our toy, online feedback means the user keeps looking at what the agent is actually producing. Every 250 steps the user reads a few 4-token windows of the agent's **current** document, at random places (with the level-0 assistant), and those scores count toward the reward. The user doesn't need to know where the loophole is. They just look at the agent's real output.
+
+# %%
+def optimize_online(steps=15000, seed=0, every=250, n_windows=8):
+    r = np.random.default_rng(seed)
+    doc = r.integers(0, V, DOC)
+    windows = r.integers(0, DOC - SNIP + 1, n_windows)
+    naive = evaluators["level 2, naive"][1]
+    evaluate = lambda d: naive(d) + sum(RM0(d[o:o + SNIP]) for o in windows)
+    trace = []
+    for t in range(steps):
+        if t % every == 0:                        # new feedback on the agent's current output
+            windows = r.integers(0, DOC - SNIP + 1, n_windows)
+            score = evaluate(doc)
+        new = doc.copy()
+        i = r.integers(DOC); j = min(DOC, i + r.integers(1, 9))
+        new[i:j] = r.integers(V)
+        s = evaluate(new)
+        if s >= score:
+            doc, score = new, s
+        if t % 250 == 0:
+            trace.append((naive(doc), true_quality(doc)))
+    return doc, np.array(trace)
+
+docs["online feedback"], traces["online feedback"] = optimize_online()
+fig, axes = plt.subplots(1, 2, figsize=(12, 3.6))
+fig4(axes[0], traces["level 2, naive"], "frozen naive evaluator")
+fig4(axes[1], traces["online feedback"], "naive evaluator + online spot checks")
+plt.tight_layout(); plt.show()
+d = docs["online feedback"]
+print(f"online feedback   true quality {true_quality(d)}/63")
+print("   ", " ".join("".join(map(str, d[i:i + SNIP])) for i in range(0, DOC, SNIP)))
+
+# %% [markdown]
+# With online spot checks the true quality climbs to near the maximum. (The green curve on the right is still the naive evaluator's score, for comparison.) The broken seams are gone, because any seam might be the one the user reads next.
+#
+# ## 5. 🎛 Explore
+#
+# ### 5a. Write a document that fools the evaluator
 #
 # Type a document of exactly **64 digits** (spaces are ignored). You'll see its true quality and what the naive and careful evaluators think of it. Can you write something the naive evaluator rates near the top while its true quality is low? The optimizer's answer from section 3 is pre-filled.
 
@@ -200,7 +252,7 @@ widgets.interact(score_doc, text=widgets.Textarea(
     description="document", layout=widgets.Layout(width="95%", height="60px"), continuous_update=False));
 
 # %% [markdown]
-# ### 4b. Run your own experiment
+# ### 5b. Run your own experiment
 #
 # Change how much feedback the user gives, how noisy it is, and how carefully the seams get checked. Then click **Run Interact** (takes a few seconds). Things to try:
 #
@@ -251,7 +303,7 @@ widgets.interact_manual(rrm_experiment,
     seed=widgets.IntSlider(value=0, min=0, max=20, description="seed"));
 
 # %% [markdown]
-# ## 5. Exercises
+# ## 6. Exercises
 #
 # 1. **Count the seams.** At level L the naive evaluator misses how many pairs? Write the formula and check it against the documents above. What happens at level 3 (256 tokens)?
 # 2. **Fewer comparisons.** Cut `N_COMPARISONS` to 100. Re-run the careful optimization. Does the optimizer now exploit errors in RM0 itself (look for pairs in the final document that are out of order but that RM0 rates highly)?

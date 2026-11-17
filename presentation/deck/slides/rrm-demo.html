@@ -1,18 +1,18 @@
 <section id="rrm-demo" class="dark">
-<p class="eyebrow">Notebook 4 · live</p>
-<h2>The optimizer finds the seams nobody checks</h2>
+<p class="eyebrow">Notebook 3 · live</p>
+<h2>A frozen evaluator gets gamed</h2>
 <div class="row" style="gap:64px">
 <div class="col grow" style="gap:20px">
-<p class="body">A 64-token document, scored in 4-token chunks by a learned reward model. Optimize against that score:</p>
+<p class="body">A 64-token document, scored in 4-token chunks by assistants. Train an agent against that frozen score:</p>
 <p class="pill" style="font-size:32px">2777 2777 2777 2777 2777 …</p>
 <p class="body">Every chunk is perfect. Nearly every seam (7 → 2) is broken.</p>
 </div>
 <div class="col" style="width:560px;gap:24px">
-<div class="row-c"><p class="big" style="font-size:120px">49</p><p class="big-label">true quality, naive evaluator (out of 63, and falling)</p></div>
-<div class="row-c"><p class="big acc" style="font-size:120px">63</p><p class="big-label">user also checks each seam: 15 cheap looks</p></div>
+<div class="row-c"><p class="big" style="font-size:120px">49</p><p class="big-label">true quality with the frozen evaluator (out of 63, and falling)</p></div>
+<div class="row-c"><p class="big acc" style="font-size:120px">62</p><p class="big-label">with online feedback: the user spot-checks the agent’s output (§5.1)</p></div>
 </div>
 </div>
 <div class="spacer"></div>
-<p class="lede">The evaluator’s score kept rising while true quality fell. Goodhart’s law in one plot.</p>
-<aside>Section 3 of Notebook 4, runs in seconds. Both evaluator scores climb to the top. True quality: careful reaches 63/63; naive peaks around 57 and then falls to about 49. The careful document is almost all 7s: perfect by the stated metric and useless, a bonus point about underspecified rewards. Notebook 0 has the same idea as a cooked ledger hidden in the carry-forward between pages.</aside>
+<p class="lede">Score up, true quality down: the shape of the paper’s Fig. 4.</p>
+<aside>Sections 3 and 4 of Notebook 3, run in seconds. The paper runs no experiments of its own; its Fig. 4, reproduced from Ibarz et al. (2018), shows a frozen reward model on Atari: “Over time the agent learns to exploit the reward model: the perceived performance (according to the reward model) increases, while the actual performance (according to the game score) plummets.” Our toy has the same shape: true quality peaks around 57, then falls to 49 while the green score keeps rising. The fix in §5.1: “If we provide the agent with reward feedback online, we get a tighter feedback loop between the user’s feedback and the agent’s behavior.” Here the user reads a few random 4-token windows of the agent’s current document every 250 steps, and true quality stays at 62.</aside>
 </section>
