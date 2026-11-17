@@ -1,0 +1,19 @@
+<section id="ia-idea" class="alt">
+<p class="eyebrow">01 · Iterated amplification · Method</p>
+<h2>Split the hard question</h2>
+<div class="row-c" style="gap:20px">
+<div class="box in" style="--i:0"><p class="lab">Question</p><p class="val">σ²⁹(x) ?</p></div>
+<x-shape kind="arrow-right" class="arrow"></x-shape>
+<div class="box hl in" style="--i:1"><p class="lab">H splits</p><p class="val">14 + 14 + 1</p></div>
+<x-shape kind="arrow-right" class="arrow"></x-shape>
+<div class="col in" style="--i:2">
+<div class="box"><p class="lab">X answers</p><p class="val">y = σ¹⁴(x)</p></div>
+<div class="box"><p class="lab">X answers</p><p class="val">z = σ¹⁴(y)</p></div>
+</div>
+<x-shape kind="arrow-right" class="arrow"></x-shape>
+<div class="box hl in" style="--i:3"><p class="lab">H looks up</p><p class="val">σ(z)</p></div>
+</div>
+<p class="quote-m">“Amplifyᴴ(X) answers a question Q by having H identify a sequence of useful subquestions, using X to compute a subanswer to each subquestion”</p>
+<p class="cite">Christiano, Shlegeris &amp; Amodei (2018), §1.1</p>
+<aside>H is the human, X is the current model. The amplified system is H plus several copies of X working together. Notebook 1 is a small version of the paper’s first task, permutation powering: “what is sigma to the k of x?” H uses the paper’s decomposition (Table 3): sigma^(2k)(x) = sigma^k(sigma^k(x)) and sigma^(2k+1)(x) = sigma(sigma^k(sigma^k(x))), where the last sigma is a primitive question, “What is σ(x)?”, that H answers itself. H never solves a hard question. The abstract’s one-line summary: amplification “progressively builds up a training signal for difficult problems by combining solutions to easier subproblems”.</aside>
+</section>

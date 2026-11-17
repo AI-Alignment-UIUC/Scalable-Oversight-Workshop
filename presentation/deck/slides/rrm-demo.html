@@ -1,0 +1,14 @@
+<section id="rrm-demo" class="dark">
+<p class="eyebrow">03 · Demo setup · Notebook 3</p>
+<h2>A document too long for the user to read</h2>
+<table>
+<tr><th style="width:18%"></th><th style="width:36%">Paper</th><th style="width:46%">Notebook 3</th></tr>
+<tr><td><b>Intention</b></td><td>the user’s intentions (§1)</td><td>“flow”: 64 digits, each one no smaller than the last</td></tr>
+<tr><td><b>Feedback</b></td><td>the user provides feedback (§3.1)</td><td>1,500 noisy comparisons of 4-digit snippets</td></tr>
+<tr><td><b>Reward model</b></td><td>learned from that feedback (§3.1)</td><td>a learned score for each adjacent pair</td></tr>
+<tr><td><b>Assistance</b></td><td>Aₖ₋₁ helps the user evaluate (§3.2)</td><td>helpers score chunks of 4, then 16; the user adds them up</td></tr>
+<tr><td><b>Agent</b></td><td>trained against a frozen reward model (Fig. 4)</td><td>an optimizer that rewrites the document</td></tr>
+<tr><td><b>Fix</b></td><td>reward feedback online (§5.1)</td><td>the user spot-checks random windows as it trains</td></tr>
+</table>
+<aside>Sections 3 and 4 of Notebook 3 run in seconds. The paper runs no experiments of its own; its Fig. 4, reproduced from Ibarz et al. (2018), shows the failure we reproduce: “The fully trained reward model from the best seed is frozen and used to train an new agent from scratch.” What to expect: against the frozen evaluator, the score keeps rising while true quality peaks around 57 of 63 and falls to 49. The optimizer repeats the 4-digit snippet the reward model likes best (2777 2777 2777 …), so every chunk is perfect and nearly every seam between chunks is broken, because no helper looks at the seams. With online feedback (8 random 4-digit windows of the agent’s current document, re-drawn every 250 steps) true quality stays at 62. Hands-on (about 12 min): exercise 2, cut the comparisons to 100 and look for exploited reward-model errors.</aside>
+</section>

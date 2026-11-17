@@ -1,0 +1,13 @@
+<section id="db-halving">
+<p class="eyebrow">02 · Theory result</p>
+<h2>Halve the claim to one step</h2>
+<div class="col" style="gap:20px">
+<div class="row-c in" style="--i:0"><p class="lvl">L = 64</p><div class="bar grow"><div class="seg hot"><p class="tag">u → c</p></div><div class="seg"><p class="tag">c → v</p></div></div></div>
+<div class="row-c in" style="--i:1"><p class="lvl">L = 32</p><div class="bar" style="width:740px"><div class="seg"><p class="tag">u → c′</p></div><div class="seg hot"><p class="tag">c′ → c</p></div></div></div>
+<div class="row-c in" style="--i:2"><p class="lvl">L = 16</p><div class="bar" style="width:370px"><div class="seg hot"><p class="tag">…</p></div><div class="seg"><p class="tag">…</p></div></div></div>
+<div class="row-c in" style="--i:3"><p class="lvl">L = 1</p><div class="bar" style="width:120px"><div class="seg hot"><p class="tag">1 step</p></div></div><p class="small">the judge checks this, and only this</p></div>
+</div>
+<p class="body">Alice names a midpoint. Bob picks the half he thinks is false. A false claim always has a false half, so a strong Bob drives it down to one checkable step.</p>
+<p class="cite">“In an analogy to complexity theory, debate with optimal play can answer any question in PSPACE given polynomial time judges (direct judging answers only NP questions).” Irving et al., Abstract</p>
+<aside>The formal statement (§2.2): “For any problem L ∈ PSPACE, we can choose a polynomial time judge so that optimal play in the debate game with polynomially many steps solves L.” The point of the NP contrast: a judge checking an answer directly can only verify what fits in one certificate; debate lets the judge verify much more by checking one step. The proof sketch from the Iliad notes, §11 (“Theorem: Debate=PSPACE”): “a debate can verify reachability by recursively halving a path”. Alice claims a path of at most 2^t steps between two configurations of the machine and names a midpoint; Bob picks the half to challenge; at t = 0 the judge checks directly that the two configurations are equal or one step apart. Orange marks the half Bob disputes. No notebook for this one: it is the theory behind the pixel game. Optional aside: cross-examination, letting a debater question frozen copies of the opponent, pushes the theoretical power from PSPACE to NEXP (Iliad §§12–13).</aside>
+</section>

@@ -1,0 +1,506 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Scalable Oversight Workshop</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400..700&family=Inter:wght@400;600&family=JetBrains+Mono:wght@500&display=swap">
+<style>
+html, body { margin: 0; height: 100%; background: #0c1a30; overflow: hidden; }
+* { box-sizing: content-box; }
+h1, h2, h3, p, ul, ol { margin: 0; }
+#stage { position: absolute; left: 50%; top: 50%; width: 1920px; height: 1080px; transform-origin: center; }
+#stage > section { position: absolute; inset: 0; width: 1664px; height: 824px; display: none !important; overflow: hidden; }
+#stage > section.on { display: flex !important; }
+x-shape { display: block; }
+x-shape[kind="arrow-right"] { clip-path: polygon(0 30%, 60% 30%, 60% 0, 100% 50%, 60% 100%, 60% 70%, 0 70%); }
+th { text-align: left; } td, th { padding: 0.35em 0.6em; border-bottom: 1px solid rgba(0,0,0,.12); vertical-align: top; }
+#hud { position: fixed; right: 16px; bottom: 12px; font: 14px system-ui, sans-serif; color: #bfd0e6; opacity: .8; }
+#notes { position: fixed; left: 0; right: 0; bottom: 0; max-height: 30vh; overflow: auto; background: rgba(12,26,48,.95);
+  color: #f5f2ec; font: 17px/1.5 system-ui, sans-serif; padding: 14px 20px; display: none; }
+@media print { #hud, #notes { display: none !important; } }
+:root {
+  --ink: #13294B;
+  --paper: #F5F2EC;
+  --paper2: #E6ECF3;
+  --card: #FBFAF7;
+  --soft: #46536A;
+  --accent: #E84A27;
+  --accent-ink: #B5371A;
+  --on-dark: #F5F2EC;
+  --on-dark-soft: #BFD0E6;
+  --on-dark-accent: #FF9A70;
+  --head: 'Space Grotesk', Arial, sans-serif;
+  --text: 'Inter', Arial, sans-serif;
+  --mono: 'JetBrains Mono', 'Courier New', monospace;
+}
+body { font-family: var(--text); color: var(--ink); }
+section {
+  padding: 128px;
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--text);
+  display: flex;
+  flex-direction: column;
+  gap: 40px;
+}
+section.alt { background: var(--paper2); }
+section.dark { background: var(--ink); color: var(--on-dark); }
+section.statement { background: var(--accent); color: var(--ink); justify-content: center; }
+section.center { justify-content: center; }
+
+h1 { font-family: var(--head); font-size: 120px; font-weight: 700; line-height: 1.02; letter-spacing: -2px; }
+h2 { font-family: var(--head); font-size: 72px; font-weight: 600; line-height: 1.08; letter-spacing: -1px; }
+h3 { font-family: var(--head); font-size: 44px; font-weight: 600; line-height: 1.15; }
+p { font-size: 32px; line-height: 1.4; }
+ul, ol { font-size: 32px; line-height: 1.4; }
+li { margin-bottom: 12px; }
+
+.eyebrow { font-family: var(--mono); font-size: 24px; font-weight: 500; letter-spacing: 3px; text-transform: uppercase; color: var(--accent-ink); }
+.dark .eyebrow { color: var(--on-dark-accent); }
+.statement .eyebrow { color: var(--ink); }
+.lede { font-size: 44px; line-height: 1.3; color: var(--soft); max-width: 1500px; }
+.dark .lede { color: var(--on-dark-soft); }
+.body { font-size: 32px; line-height: 1.45; color: var(--soft); }
+.dark .body { color: var(--on-dark-soft); }
+.small { font-size: 24px; line-height: 1.4; color: var(--soft); }
+.dark .small { color: var(--on-dark-soft); }
+
+.quote { font-family: var(--head); font-size: 56px; font-weight: 500; line-height: 1.2; letter-spacing: -0.5px; max-width: 1560px; }
+.quote-m { font-family: var(--head); font-size: 44px; font-weight: 500; line-height: 1.25; max-width: 1560px; }
+.cite { font-family: var(--mono); font-size: 24px; color: var(--soft); }
+.dark .cite { color: var(--on-dark-soft); }
+.statement .cite { color: var(--ink); }
+
+.row { display: flex; flex-direction: row; gap: 32px; align-items: stretch; }
+.row-c { display: flex; flex-direction: row; gap: 24px; align-items: center; }
+.col { display: flex; flex-direction: column; gap: 16px; }
+.grow { flex: 1; }
+.spacer { flex: 1; }
+
+.card { flex: 1; background: var(--card); border-top: 8px solid var(--accent); padding: 40px; display: flex; flex-direction: column; gap: 16px; }
+.dark .card { background: #1E3A63; border-top: 8px solid var(--on-dark-accent); }
+.card .num { font-family: var(--mono); font-size: 24px; color: var(--accent-ink); }
+.dark .card .num { color: var(--on-dark-accent); }
+.card .t { font-size: 28px; line-height: 1.4; color: var(--soft); }
+.dark .card .t { color: var(--on-dark-soft); }
+
+.box { background: var(--card); border: 3px solid var(--ink); padding: 28px 32px; display: flex; flex-direction: column; gap: 8px; }
+.box.hl { background: var(--ink); color: var(--on-dark); }
+.box .lab { font-family: var(--mono); font-size: 24px; color: var(--accent-ink); }
+.box.hl .lab { color: var(--on-dark-accent); }
+.box .val { font-family: var(--head); font-size: 40px; font-weight: 600; line-height: 1.15; }
+.arrow { width: 72px; height: 36px; background: var(--accent); }
+
+.big { font-family: var(--head); font-size: 160px; font-weight: 700; line-height: 1; letter-spacing: -4px; }
+.big-label { font-size: 28px; line-height: 1.35; color: var(--soft); }
+.dark .big-label { color: var(--on-dark-soft); }
+.dark .big { color: var(--on-dark); }
+.big.acc { color: var(--accent-ink); }
+.dark .big.acc { color: var(--on-dark-accent); }
+.stat { flex: 1; display: flex; flex-direction: column; gap: 12px; }
+
+table { font-family: var(--text); font-size: 28px; color: var(--ink); width: 100%; }
+.dark table { color: var(--on-dark); }
+
+.bar { height: 56px; background: var(--card); border: 3px solid var(--ink); display: flex; flex-direction: row; align-items: center; }
+.bar .seg { flex: 1; height: 50px; display: flex; align-items: center; justify-content: center; }
+.bar .seg.hot { background: var(--accent); }
+.bar .tag { font-family: var(--mono); font-size: 24px; }
+.lvl { font-family: var(--mono); font-size: 24px; width: 150px; color: var(--soft); }
+
+.pill { font-family: var(--mono); font-size: 24px; background: var(--ink); color: var(--on-dark); padding: 8px 20px; border-radius: 40px; align-self: flex-start; }
+.dark .pill { background: #2A4A78; color: var(--on-dark); }
+
+@keyframes rise { from { opacity: 0; transform: translateY(24px); } to { opacity: 1; transform: translateY(0); } }
+.in { animation: rise 500ms ease-out both; animation-delay: calc(var(--i, 0) * 120ms); }
+
+</style></head>
+<body><div id="stage">
+<section data-note="Welcome. While people settle in: put the repo link or QR code up, ask everyone to open Notebook 1 (Iterated amplification) in Colab and run all. It takes about 20 seconds and needs no setup. There are three notebooks, one per paper, each a small toy version of the paper’s own experiment. Today is two thirds hands-on: short talks, then notebooks. Builds on the SRC Scalable Oversight series." id="cover" class="dark" data-transition="fade">
+<p class="eyebrow in" style="--i:0">AI Alignment @ Illinois · SCCS 4403 · 6–8 pm</p>
+<div class="spacer"></div>
+<h1 class="in" style="--i:1">Scalable Oversight Workshop</h1>
+<p class="lede in" style="--i:2">How a weak expert can supervise a strong learner: iterated amplification, debate, and recursive reward modeling, hands-on.</p>
+<div class="spacer"></div>
+<div class="row-c in" style="--i:3">
+<p class="pill">github.com/AI-Alignment-UIUC/Scalable-Oversight-Workshop</p>
+<p class="small">Open Notebook 1 in Colab while we start · snacks at the back</p>
+</div>
+
+</section>
+<section data-note="RLHF and its relatives depend on a person being able to tell good output from bad. As systems take on bigger and harder tasks, that stops being true. Ask the room for an example from their own work where they could not check an AI’s answer." id="problem">
+<p class="eyebrow">The problem</p>
+<h2>Human feedback works while humans can check the work</h2>
+<div class="spacer"></div>
+<p class="quote-m in" style="--i:0">“…there are harder tasks for which we can’t compute demonstrations or rewards even with human assistance.”</p>
+<p class="cite in" style="--i:1">Christiano, Shlegeris &amp; Amodei (2018), Supervising strong learners by amplifying weak experts, §1</p>
+<div class="row in" style="--i:2">
+<div class="card"><p class="num">Too big</p><p class="t">Reviewing a 10,000-line pull request</p></div>
+<div class="card"><p class="num">Too hard</p><p class="t">Checking a long proof or a novel experiment</p></div>
+<div class="card"><p class="num">Too slow</p><p class="t">Judging a policy whose effects take years</p></div>
+</div>
+
+</section>
+<section data-note="Three answers, all from 2018, all built on the same idea: use AI to help humans oversee AI. We’ll build a toy version of each today: one notebook per paper, each a small version of that paper’s own experiment." id="question" class="alt">
+<p class="eyebrow">Today’s question</p>
+<h2>Can a weak overseer supervise a strong system, if the system helps?</h2>
+<div class="spacer"></div>
+<div class="row">
+<div class="card in" style="--i:0"><p class="num">01 · 2018</p><h3>Iterated amplification</h3><p class="t">Split hard questions into easy ones, delegate the pieces, train a model to imitate the team.</p></div>
+<div class="card in" style="--i:1"><p class="num">02 · 2018</p><h3>Debate</h3><p class="t">Two models argue; a judge checks only the one step they disagree on.</p></div>
+<div class="card in" style="--i:2"><p class="num">03 · 2018</p><h3>Recursive reward modeling</h3><p class="t">Earlier agents help the user evaluate the work of later ones.</p></div>
+</div>
+
+</section>
+<section data-note="Show each proof in full (Iliad notes §4.1 and §4.3). Give pairs 5 minutes. Then ask: how long did it take? Who checked every line? The punchline: once someone points at the flawed step, checking it is easy. That gap between finding and checking is the intuition behind debate. Horses: the step from n=1 to n=2 fails because the two groups don’t overlap. ln 2: rearranging a conditionally convergent series changes its sum." id="warmup" class="dark">
+<p class="eyebrow">Warm-up · 5 minutes in pairs</p>
+<h2>Find the mistake</h2>
+<div class="row">
+<div class="card"><p class="num">Theorem 1</p><h3>All horses are the same color</h3><p class="t">By induction on the number of horses. Every step looks fine.</p></div>
+<div class="card"><p class="num">Theorem 2</p><h3>ln(2) = 0</h3><p class="t">Rearrange the terms of 1 − ½ + ⅓ − ¼ + … and watch the sum vanish.</p></div>
+</div>
+<p class="lede">Did you check every line, or did someone point you to the right one?</p>
+<p class="cite">Adapted from the Iliad Intensive debate session, §4</p>
+
+</section>
+<section data-note="Roughly a third talk, two thirds hands-on. If we run late, Notebook 3 becomes a live demo only (it runs in seconds); the closing stays." id="agenda">
+<p class="eyebrow">Tonight</p>
+<h2>Short talks, then you run the notebooks</h2>
+<table>
+<tr><th style="width:18%">Time</th><th style="width:47%">Part</th><th style="width:35%">Notebook</th></tr>
+<tr><td>6:00</td><td>Snacks, open Colab</td><td>1 · Amplification</td></tr>
+<tr><td>6:10</td><td>The problem + warm-up</td><td>none</td></tr>
+<tr><td>6:25</td><td>Iterated amplification</td><td>1 · Amplification</td></tr>
+<tr><td>6:55</td><td>Debate</td><td>2 · The pixel game</td></tr>
+<tr><td>7:30</td><td>Recursive reward modeling</td><td>3 · Reward modeling</td></tr>
+<tr><td>7:50</td><td>The map, open problems, your project</td><td>projects.md</td></tr>
+</table>
+<p class="small">One notebook per paper. Each runs on a free Colab CPU in under a minute. No API keys, nothing to install.</p>
+
+</section>
+<section data-note="H is the human, X is the current model. The amplified system is H plus several copies of X working together. Notebook 1 is a small version of the paper’s first task, permutation powering: “what is sigma to the k of x?” H uses the paper’s decomposition (Table 3): sigma^(2k)(x) = sigma^k(sigma^k(x)) and sigma^(2k+1)(x) = sigma(sigma^k(sigma^k(x))), where the last sigma is a primitive question, “What is σ(x)?”, that H answers itself. H never solves a hard question. The abstract’s one-line summary: amplification “progressively builds up a training signal for difficult problems by combining solutions to easier subproblems”." id="ia-idea" class="alt">
+<p class="eyebrow">01 · Iterated amplification · Method</p>
+<h2>Split the hard question</h2>
+<div class="row-c" style="gap:20px">
+<div class="box in" style="--i:0"><p class="lab">Question</p><p class="val">σ²⁹(x) ?</p></div>
+<x-shape kind="arrow-right" class="arrow"></x-shape>
+<div class="box hl in" style="--i:1"><p class="lab">H splits</p><p class="val">14 + 14 + 1</p></div>
+<x-shape kind="arrow-right" class="arrow"></x-shape>
+<div class="col in" style="--i:2">
+<div class="box"><p class="lab">X answers</p><p class="val">y = σ¹⁴(x)</p></div>
+<div class="box"><p class="lab">X answers</p><p class="val">z = σ¹⁴(y)</p></div>
+</div>
+<x-shape kind="arrow-right" class="arrow"></x-shape>
+<div class="box hl in" style="--i:3"><p class="lab">H looks up</p><p class="val">σ(z)</p></div>
+</div>
+<p class="quote-m">“Amplifyᴴ(X) answers a question Q by having H identify a sequence of useful subquestions, using X to compute a subanswer to each subquestion”</p>
+<p class="cite">Christiano, Shlegeris &amp; Amodei (2018), §1.1</p>
+
+</section>
+<section data-note="Why H′ exists (§2.1): “In order to reduce the burden on the human expert H, we train a ‘human predictor’ H′”. Because H′ only learns how to split questions and combine answers, the paper expects “to train it with much less data”. In the limit the system approximates a huge tree of copies of H. Christiano’s name for that ideal, HCH (“humans consulting HCH”), comes from his blog posts, not this paper. Our notebook skips H′: H answers directly." id="ia-loop">
+<p class="eyebrow">01 · Method</p>
+<h2>Distill the team into X, then amplify again</h2>
+<div class="row">
+<div class="card in" style="--i:0"><p class="num">Step 1 · §2.2</p><h3>Amplify</h3><p class="t">Sample a question, let H answer it with copies of X, and “record every decision made by H during the process.”</p></div>
+<div class="card in" style="--i:1"><p class="num">Step 2 · §2.2</p><h3>Model the human</h3><p class="t">“We train a model H′ to predict the decisions made by H in each of these transcripts”</p></div>
+<div class="card in" style="--i:2"><p class="num">Step 3 · §2.2</p><h3>Distill</h3><p class="t">Amplify again with H′ in place of H. “X is trained by supervised learning on these (Q, A) pairs.”</p></div>
+</div>
+<div class="spacer"></div>
+<div class="row">
+<div class="col grow"><p class="small"><b>No outside objective:</b> “the objective is implicit in the way that the human coordinates the copies of X” (§1.1)</p></div>
+<div class="col grow"><p class="small"><b>Repeat:</b> the amplified team “is modestly smarter than X working on its own, and X chases this moving target” (§2.3)</p></div>
+</div>
+
+</section>
+<section data-note="The tasks are chosen because the right decomposition is known, so the paper can test the training method without a person in the loop. Permutation powering, the one our notebook uses: “Given a permutation σ: {1, …, 64} → {1, …, 64}, compute σ^k(x) for k up to 64” (§4.1). X is a Transformer: “We implement X as an encoder-decoder architecture with self-attention, closely following the Transformer architecture” (§2.5). Point out that every one of these tasks has a clean recursive structure; the open question is whether real tasks do." id="ia-paper">
+<p class="eyebrow">01 · The experiments</p>
+<h2>Five algorithmic tasks, a hard-coded “human”</h2>
+<div class="row" style="gap:64px">
+<div class="col grow">
+<ul>
+<li>Permutation powering</li>
+<li>Sequential assignments</li>
+<li>Wildcard search</li>
+<li>Shortest path</li>
+<li>Union find</li>
+</ul>
+<p class="small">The five tasks of §4.1.</p>
+</div>
+<div class="col grow" style="gap:32px">
+<p class="quote-m" style="font-size:40px">“Rather than having a human perform the decomposition, we provide a hard-coded algorithm H which decomposes each task”</p>
+<p class="cite">§4.1</p>
+<p class="body">Each task grows from size 8 to 64 as X improves (Table 3, App. C.2). The baseline is supervised learning from the ground truth (Fig. 2).</p>
+</div>
+</div>
+
+</section>
+<section data-note="Full §4.2 sentence on data: “Supervised learning required tens of millions of examples in order to learn these algorithms”, while “Iterated Amplification required tens of thousands of examples in order to learn the much simpler decompositions”. Those tens of thousands are queries to H: Table 2 gives 6,000 to 24,000 per task. The cost: “training with amplification requires about twice as much computation per question” (§4.2). The §4.3 limit continues: “nor on whether it would be feasible to learn messy real world decompositions.” The conclusion’s hope (§6): “This offers hope for applying ML in domains where we cannot compute a suitable objective, even with human help, as long as humans are able to decompose a task into simpler pieces.”" id="ia-found" class="alt">
+<p class="eyebrow">01 · What the paper found</p>
+<h2>Almost as fast, with no ground truth</h2>
+<p class="quote-m in" style="--i:0">“We have shown that Iterated Amplification can successfully solve algorithmically complex tasks where there is no external reward function and the objective is implicit in a learned decomposition.”</p>
+<p class="cite">§6, Conclusion</p>
+<div class="row">
+<div class="card in" style="--i:1"><p class="num">Speed · §4.2</p><p class="t">“Iterated Amplification is able to solve these tasks effectively with at worst a modest slowdown, achieving our main goal.”</p></div>
+<div class="card in" style="--i:2"><p class="num">Data · §4.2</p><p class="t">“Supervised learning required tens of millions of examples”; amplification “required tens of thousands” to learn the decompositions.</p></div>
+<div class="card in" style="--i:3"><p class="num">The limit · §4.3</p><p class="t">“These experiments don’t shed any light on whether humans can decompose interesting real world tasks”</p></div>
+</div>
+
+</section>
+<section data-note="Run section 3 live (about 20 seconds). What to expect: the difficulty climbs from 1 to 5 in four rounds under the 85% rule, which compares X with its own training targets and needs no ground truth. X answers all 496 questions by round 15. Section 5 is the Fig. 2 comparison: amplification reaches 95% at round 9, supervised learning on true answers at round 6, the paper’s “modest slowdown”. Amplification never sees a true answer to a hard question. Section 6 is our extension, since the paper’s H never errs: an H that misreads 10% of lookups at random leaves near-zero error, while an H that always misreads 2 of the 16 inputs leaves about 90% error on the deepest questions. Random error washes out in distillation; consistent bias is copied into every answer built on it. Another simplification: the paper also trains a model H′ of the human so H isn’t queried every time; our H answers directly. Hands-on (20 min): exercise 2 (catch the blind spot with the paper’s “?” answer, App. C.1) or exercise 3 (a worse decomposition)." id="ia-demo" class="dark">
+<p class="eyebrow">01 · Demo setup · Notebook 1</p>
+<h2>Permutation powering, small enough to train in seconds</h2>
+<table>
+<tr><th style="width:18%"></th><th style="width:38%">Paper (§4.1)</th><th style="width:44%">Notebook 1</th></tr>
+<tr><td><b>Task</b></td><td>σ on 64 elements, k up to 64</td><td>σ on 16 elements, k up to 31: 496 questions</td></tr>
+<tr><td><b>H</b></td><td>halves k, looks up one σ (Table 3)</td><td>same decomposition, hard-coded</td></tr>
+<tr><td><b>X</b></td><td>a Transformer; σ is random and part of the input</td><td>a small network; one fixed σ, so X memorizes its powers</td></tr>
+<tr><td><b>Curriculum</b></td><td>grow the task once X gets 85% of its own (Q, A) pairs right (App. C.2)</td><td>same rule, but it raises k instead of the size</td></tr>
+<tr><td><b>Baseline</b></td><td>supervised learning on true answers (Fig. 2)</td><td>same</td></tr>
+</table>
+<div class="spacer"></div>
+<p class="body"><b>Beyond the paper:</b> give H mistakes, random slips or two blind spots, and see which ones survive distillation.</p>
+
+</section>
+<section data-note="Hubinger’s one-line version (proposal 9): train a model, Alice, to win debates against a copy of itself, Bob, in front of a human judge. The question for today: when does winning the debate line up with telling the truth?" id="db-game" class="alt">
+<p class="eyebrow">02 · Debate · Method</p>
+<h2>Two agents argue. A judge decides.</h2>
+<div class="spacer"></div>
+<p class="quote-m">“A question q ∈ Q is shown to both agents. The two agents state their answers a₀, a₁ ∈ A (which may be the same). The two agents take turns making statements s₀, s₁, . . . , sₙ₋₁ ∈ S. The judge sees the debate (q, a, s) and decides which agent wins.”</p>
+<p class="cite">Irving, Christiano &amp; Amodei (2018), AI Safety via Debate, §2</p>
+<div class="spacer"></div>
+<p class="body">The judge stands in for a human who could never solve the question alone. The debaters stand in for strong models.</p>
+
+</section>
+<section data-note="This is the whole proposal in one sentence. If it holds, honesty is the winning strategy, even when the judge couldn’t have found the answer. Remind people of the warm-up: once someone pointed at the bad step, checking it was easy." id="db-bet" class="statement">
+<p class="eyebrow">02 · The claim</p>
+<h1 class="in" style="--i:0">“In the debate game, it is harder to lie than to refute a lie.”</h1>
+<p class="cite in" style="--i:1">Irving, Christiano &amp; Amodei (2018), §2</p>
+
+</section>
+<section data-note="The formal statement (§2.2): “For any problem L ∈ PSPACE, we can choose a polynomial time judge so that optimal play in the debate game with polynomially many steps solves L.” The point of the NP contrast: a judge checking an answer directly can only verify what fits in one certificate; debate lets the judge verify much more by checking one step. The proof sketch from the Iliad notes, §11 (“Theorem: Debate=PSPACE”): “a debate can verify reachability by recursively halving a path”. Alice claims a path of at most 2^t steps between two configurations of the machine and names a midpoint; Bob picks the half to challenge; at t = 0 the judge checks directly that the two configurations are equal or one step apart. Orange marks the half Bob disputes. No notebook for this one: it is the theory behind the pixel game. Optional aside: cross-examination, letting a debater question frozen copies of the opponent, pushes the theoretical power from PSPACE to NEXP (Iliad §§12–13)." id="db-halving">
+<p class="eyebrow">02 · Theory result</p>
+<h2>Halve the claim to one step</h2>
+<div class="col" style="gap:20px">
+<div class="row-c in" style="--i:0"><p class="lvl">L = 64</p><div class="bar grow"><div class="seg hot"><p class="tag">u → c</p></div><div class="seg"><p class="tag">c → v</p></div></div></div>
+<div class="row-c in" style="--i:1"><p class="lvl">L = 32</p><div class="bar" style="width:740px"><div class="seg"><p class="tag">u → c′</p></div><div class="seg hot"><p class="tag">c′ → c</p></div></div></div>
+<div class="row-c in" style="--i:2"><p class="lvl">L = 16</p><div class="bar" style="width:370px"><div class="seg hot"><p class="tag">…</p></div><div class="seg"><p class="tag">…</p></div></div></div>
+<div class="row-c in" style="--i:3"><p class="lvl">L = 1</p><div class="bar" style="width:120px"><div class="seg hot"><p class="tag">1 step</p></div></div><p class="small">the judge checks this, and only this</p></div>
+</div>
+<p class="body">Alice names a midpoint. Bob picks the half he thinks is false. A false claim always has a false half, so a strong Bob drives it down to one checkable step.</p>
+<p class="cite">“In an analogy to complexity theory, debate with optimal play can answer any question in PSPACE given polynomial time judges (direct judging answers only NP questions).” Irving et al., Abstract</p>
+
+</section>
+<section data-note="The setup, from the Fig. 2 caption: “The debaters state their claimed label up front, then reveal one nonzero pixel per turn to the judge up to a total of 4 or 6.” How the experiment works (§3.1): “the judge is trained to classify MNIST from 6 (resp. 4) nonzero pixels, with the pixels chosen at random at training time.” The debaters use “pure Monte Carlo Tree Search” with “10k rollouts per move”. Precommit: “The two players precommit to their claimed label up front”; the paper plays “9 different games for the same image” and “the liar wins if any lie wins”. Without precommit, “the judge uses the maximum logit over all 10 classes” and “any incorrect guess by the judge is a win for the liar”. Table 2 in full, honest first / liar first: 6 px, no precommit 67.4 / 81.5, precommit 87.4 / 90.4; 4 px, no precommit 51.0 / 68.4, precommit 83.8 / 86.7. Table 2’s caption: “the honest player wins more often than a random judge, showing that honesty has an advantage”. The abstract puts it as “boosting the classifier’s accuracy from 59.4% to 88.9% given 6 pixels and from 48.2% to 85.2% given 4 pixels”. The §8 limit in full: “debate is proposal only for the natural language case, and we have demonstrated only a basic experiment for MNIST images.” Also note (§3.1) that debaters “cannot lie about these pixels, but a dishonest player could choose them adversarially to fool the judge.”" id="db-paper" class="alt">
+<p class="eyebrow">02 · What the paper found</p>
+<h2>Debate lifts a weak judge</h2>
+<table>
+<tr><th style="width:22%">Pixels shown</th><th style="width:26%">Judge alone</th><th style="width:26%">Debate, no precommit</th><th style="width:26%">Debate, precommit</th></tr>
+<tr><td><b>6</b></td><td>59.4%</td><td>74.4%</td><td><b>88.9%</b></td></tr>
+<tr><td><b>4</b></td><td>48.2%</td><td>59.7%</td><td><b>85.2%</b></td></tr>
+</table>
+<p class="small">MNIST, Table 2: the mean of games where the honest or the lying debater moves first.</p>
+<div class="row">
+<div class="card in" style="--i:0"><p class="num">§3.1</p><p class="t">“For both 4 and 6 pixels precommit is crucial”</p></div>
+<div class="card in" style="--i:1"><p class="num">§3.1</p><p class="t">“Both versions give an advantage to the second player to move”</p></div>
+<div class="card in" style="--i:2"><p class="num">The limit · §8</p><p class="t">“we have demonstrated only a basic experiment for MNIST images”</p></div>
+</div>
+
+</section>
+<section data-note="These are the subsection titles of §5, “Reasons to worry”, verbatim. Later work sharpened the hidden-flaw worry. Barnes (2020) on obfuscated arguments: “a dishonest debater can often create arguments that have a fatal error, but where it is very hard to locate the error.” The Iliad notes’ list of criticisms (§16) adds a judge persuaded to run code with harmful effects, no exploration guarantees, collusion between debaters, and biased judges; §18 covers a newer protocol, prover-estimator debate." id="db-risks">
+<p class="eyebrow">02 · The paper’s own worries</p>
+<h2>Ten reasons to worry (§5)</h2>
+<div class="row" style="gap:64px">
+<ul class="grow" style="font-size:28px">
+<li>Maybe humans believe whatever they want to hear?</li>
+<li>Will humans understand the debates?</li>
+<li>Is honesty actually the best policy?</li>
+<li>Will agents trained for debate lose performance?</li>
+<li>Uncertainty about the neighborhood around Nash equilibrium</li>
+</ul>
+<ul class="grow" style="font-size:28px">
+<li>Are equilibria stable during training?</li>
+<li>Lack of debate convergence</li>
+<li>Security vulnerabilities in the human or code</li>
+<li>Stochastic simulation</li>
+<li>Training superhuman AI to be convincing sounds dangerous!</li>
+</ul>
+</div>
+<div class="spacer"></div>
+<p class="quote-m" style="font-size:40px">“Will one of the agents be able to sneak in a statement that appears logical but contains a hidden flaw without the other agent pointing out the flaw?”</p>
+<p class="cite">§5.2, Will humans understand the debates?</p>
+
+</section>
+<section data-note="Run section 4 live (about 40 seconds). What to expect, with the paper’s Table 2 in brackets: the judge alone is right 56% of the time [59.4]. Without precommit, honest first 52% [67.4], liar first 82% [81.5], mean 67% [74.4]. With precommit, 86% [87.4], 93% [90.4], mean 90% [88.9]. As in the paper, precommit helps the honest side and moving second is an advantage. Then let the room judge a few debates with the buttons in section 5a. Caveat, as in the paper: debaters can only reveal true pixels, so they cannot lie about evidence. Greedy debaters are a weak test; exercise 1 adds lookahead. Hands-on (20 min): Notebook 2 exercises 1–2." id="db-pixels" class="dark">
+<p class="eyebrow">02 · Demo setup · Notebook 2</p>
+<h2>The pixel game, on 8×8 digits</h2>
+<table>
+<tr><th style="width:18%"></th><th style="width:41%">Paper (§3.1)</th><th style="width:41%">Notebook 2</th></tr>
+<tr><td><b>Images</b></td><td>MNIST</td><td>scikit-learn’s 8×8 digits</td></tr>
+<tr><td><b>Judge</b></td><td>trained in advance on 6 (or 4) random nonzero pixels</td><td>same, with 6 pixels; a small network</td></tr>
+<tr><td><b>Moves</b></td><td>one nonzero pixel per turn, 6 in all</td><td>same</td></tr>
+<tr><td><b>Debaters</b></td><td>Monte Carlo tree search, 10k rollouts per move</td><td>greedy: the pixel that helps most right now</td></tr>
+<tr><td><b>Precommit</b></td><td>claims stated up front; the liar wins if any of 9 lies wins</td><td>same, plus the version without precommit</td></tr>
+</table>
+<div class="spacer"></div>
+<p class="body">Then you judge: the notebook shows you the revealed pixels, and you pick the honest debater.</p>
+
+</section>
+<section data-note="Leike, Krueger, Everitt, Martic, Maini and Legg (2018), Scalable agent alignment via reward modeling: a research direction. The question it starts from (§1): “How can we create agents that behave in accordance with the user’s intentions?” The abstract defines reward modeling as “learning a reward function from interaction with the user and optimizing the learned reward function”. Fig. 1’s caption: “a reward model is trained with user feedback; this reward model provides rewards to an agent trained with RL by interacting with the environment.” The intuition behind Assumption 2: “it is easier for the user to evaluate an outcome in the environment than it would be to teach behavior directly.” RRM is Hubinger’s proposal 8. Difference from amplification: it trains agents with reward rather than training a model to imitate a human." id="rrm-rm" class="alt">
+<p class="eyebrow">03 · Recursive reward modeling · Method</p>
+<h2>Learn the reward from the user, then optimize it</h2>
+<div class="row-c" style="gap:20px">
+<div class="box in" style="--i:0"><p class="lab">User</p><p class="val">gives feedback</p></div>
+<x-shape kind="arrow-right" class="arrow"></x-shape>
+<div class="box hl in" style="--i:1"><p class="lab">Reward model</p><p class="val">learns the intention</p></div>
+<x-shape kind="arrow-right" class="arrow"></x-shape>
+<div class="box in" style="--i:2"><p class="lab">Agent</p><p class="val">trained with RL</p></div>
+</div>
+<p class="body">“The user trains a reward model to learn their intentions by providing feedback.” “Both processes happen concurrently, thus we are training the agent with the user in the loop.” <span class="cite">§3.1</span></p>
+<div class="row">
+<div class="card"><p class="num">Assumption 1 · §1</p><p class="t">“We can learn user intentions to a sufficiently high accuracy.”</p></div>
+<div class="card"><p class="num">Assumption 2 · §1</p><p class="t">“For many tasks we want to solve, evaluation of outcomes is easier than producing the correct behavior.”</p></div>
+</div>
+
+</section>
+<section data-note="The definition (§3.2): “we call recursive reward modeling: leveraging agents trained with reward modeling on simpler tasks” to help evaluate harder ones. Each assistant was itself trained with reward modeling, one level down. This is where Assumption 2 does the work: the user never has to produce a novel, only judge one with help." id="rrm-idea">
+<p class="eyebrow">03 · Method</p>
+<h2>Earlier agents help the user evaluate</h2>
+<p class="quote-m">“In step k we use the agent Aₖ₋₁ to assist the user in evaluating outcomes when training agent Aₖ.”</p>
+<p class="cite">§3.2</p>
+<div class="row">
+<div class="card"><p class="num">Their example · §3.2</p><p class="t">Evaluating a novel, where “the user is assisted by an agent that provides auxiliary input: extracting a summary of the plotline, checking spelling and grammar, summarizing character development, assessing the flow of the prose, and so on.”</p></div>
+<div class="card"><p class="num">Fig. 2</p><p class="t">“Recursive reward modeling: agent Aₖ₋₁ interacts with the user to assist in evaluation process for training reward model and agent Aₖ”</p></div>
+</div>
+
+</section>
+<section data-note="Section and subsection titles are verbatim. The §5 approaches “should be thought of as directions to explore”. Section 6, Establishing trust, adds five avenues: design choices, testing, interpretability, formal verification and theoretical guarantees. The outlook (§8): “agent alignment research is still in its early stages, but we believe that there is substantial reason for optimism”." id="rrm-paper">
+<p class="eyebrow">03 · What the paper concludes</p>
+<h2>A research agenda: five challenges, ten approaches</h2>
+<div class="row" style="gap:64px">
+<div class="col" style="width:560px">
+<h3>Challenges (§4)</h3>
+<ul style="font-size:28px">
+<li>Amount of feedback</li>
+<li>Feedback distribution</li>
+<li><b>Reward hacking</b></li>
+<li>Unacceptable outcomes</li>
+<li>Reward-result gap</li>
+</ul>
+</div>
+<div class="col grow">
+<h3>Approaches (§5)</h3>
+<div class="row" style="gap:48px">
+<ul class="grow" style="font-size:28px">
+<li><b>Online feedback</b></li>
+<li>Off-policy feedback</li>
+<li>Leveraging existing data</li>
+<li>Hierarchical feedback</li>
+<li>Natural language</li>
+</ul>
+<ul class="grow" style="font-size:28px">
+<li>Model-based RL</li>
+<li>Side-constraints</li>
+<li>Adversarial training</li>
+<li>Uncertainty estimates</li>
+<li>Inductive bias</li>
+</ul>
+</div>
+</div>
+</div>
+<div class="spacer"></div>
+<p class="small">No experiments of its own: the direction is “‘shovel-ready’ for empirical research today” (§8). Bold: the pair our demo shows.</p>
+
+</section>
+<section data-note="Fig. 4’s setup: “The fully trained reward model from the best seed is frozen and used to train an new agent from scratch.” (“an new” is the paper’s typo.) The §5.1 diagnosis: “Preliminary experiments show failure modes when the reward model is not trained online, i.e. in parallel with the agent”. “In these cases the agent learns to exploit reward models that are frozen.” “Because there is no additional user feedback, loopholes in the reward model that the agent discovers cannot be corrected.” This is the one result in the paper, and Notebook 3 reproduces its shape." id="rrm-hack" class="alt">
+<p class="eyebrow">03 · What the paper found</p>
+<h2>A frozen reward model gets exploited</h2>
+<p class="quote-m in" style="--i:0">“Over time the agent learns to exploit the reward model: the perceived performance (according to the reward model) increases, while the actual performance (according to the game score) plummets.”</p>
+<p class="cite">Fig. 4, reproduced from Ibarz et al. (2018), Atari</p>
+<div class="row">
+<div class="card in" style="--i:1"><p class="num">Reward hacking · §4.3</p><p class="t">“an effect that lets the agent get more reward than intended by exploiting loopholes in the process determining the reward”</p></div>
+<div class="card in" style="--i:2"><p class="num">The fix · §5.1 Online feedback</p><p class="t">“If we provide the agent with reward feedback online, we get a tighter feedback loop between the user’s feedback and the agent’s behavior.”</p></div>
+</div>
+
+</section>
+<section data-note="The paper leaves this open. Our two notebooks give toy answers: in Notebook 1 it depends on whether the overseer’s errors are random or systematic; in Notebook 3 it depends on what nobody evaluates. Tie the two halves of the evening together. Same question as SRC criterion C2c: state the per-level error map and classify it as contracting, thresholded, compounding or cascading." id="rrm-question" class="statement">
+<p class="eyebrow">03 · The open question</p>
+<h2 class="in" style="--i:0;font-size:64px">“An important open question is whether errors accumulate: do the mistakes of the more narrow agent Aₖ₋₁ lead to larger mistakes in the training of agent Aₖ?”</h2>
+<p class="cite in" style="--i:1">Leike et al. (2018), §3.2</p>
+
+</section>
+<section data-note="Sections 3 and 4 of Notebook 3 run in seconds. The paper runs no experiments of its own; its Fig. 4, reproduced from Ibarz et al. (2018), shows the failure we reproduce: “The fully trained reward model from the best seed is frozen and used to train an new agent from scratch.” What to expect: against the frozen evaluator, the score keeps rising while true quality peaks around 57 of 63 and falls to 49. The optimizer repeats the 4-digit snippet the reward model likes best (2777 2777 2777 …), so every chunk is perfect and nearly every seam between chunks is broken, because no helper looks at the seams. With online feedback (8 random 4-digit windows of the agent’s current document, re-drawn every 250 steps) true quality stays at 62. Hands-on (about 12 min): exercise 2, cut the comparisons to 100 and look for exploited reward-model errors." id="rrm-demo" class="dark">
+<p class="eyebrow">03 · Demo setup · Notebook 3</p>
+<h2>A document too long for the user to read</h2>
+<table>
+<tr><th style="width:18%"></th><th style="width:36%">Paper</th><th style="width:46%">Notebook 3</th></tr>
+<tr><td><b>Intention</b></td><td>the user’s intentions (§1)</td><td>“flow”: 64 digits, each one no smaller than the last</td></tr>
+<tr><td><b>Feedback</b></td><td>the user provides feedback (§3.1)</td><td>1,500 noisy comparisons of 4-digit snippets</td></tr>
+<tr><td><b>Reward model</b></td><td>learned from that feedback (§3.1)</td><td>a learned score for each adjacent pair</td></tr>
+<tr><td><b>Assistance</b></td><td>Aₖ₋₁ helps the user evaluate (§3.2)</td><td>helpers score chunks of 4, then 16; the user adds them up</td></tr>
+<tr><td><b>Agent</b></td><td>trained against a frozen reward model (Fig. 4)</td><td>an optimizer that rewrites the document</td></tr>
+<tr><td><b>Fix</b></td><td>reward feedback online (§5.1)</td><td>the user spot-checks random windows as it trains</td></tr>
+</table>
+
+</section>
+<section data-note="Adapted from the SRC Discussion 2 comparison table. Ask: which one would you trust to review a 10,000-line code change? There’s no right answer; get two or three views." id="map">
+<p class="eyebrow">04 · The map</p>
+<h2>Three bets, three failure modes</h2>
+<table>
+<tr><th style="width:20%"></th><th style="width:26%">The human…</th><th style="width:27%">Bets that…</th><th style="width:27%">Fails when…</th></tr>
+<tr><td><b>Amplification</b></td><td>splits questions, delegates pieces</td><td>hard reasoning factors into small checkable steps</td><td>systematic overseer errors spread up the tree</td></tr>
+<tr><td><b>Debate</b></td><td>judges between two adversaries</td><td>refuting a lie is easier than telling one</td><td>opponents are weak, or flaws are hidden</td></tr>
+<tr><td><b>RRM</b></td><td>evaluates, helped by earlier agents</td><td>evaluating is easier than doing</td><td>optimizers exploit what nobody evaluates</td></tr>
+</table>
+<p class="small">In Hubinger’s 11 proposals: recursive reward modeling is 8, debate is 9, and amplification appears in 2, 3, 4, 10 and 11.</p>
+
+</section>
+<section data-note="Full descriptions in projects.md in the repo. Each notebook’s exercise list is also a starting point. Tell people to post in the club Discord if they start one; we’re happy to help scope it." id="projects" class="alt">
+<p class="eyebrow">04 · Your project</p>
+<h2>Six places to start</h2>
+<div class="row">
+<div class="card" style="padding:32px"><h3 style="font-size:36px">Catch the blind spot</h3><p class="t">Design decompositions that make correlated overseer errors contract. (Notebook 1)</p></div>
+<div class="card" style="padding:32px"><h3 style="font-size:36px">Obfuscated arguments</h3><p class="t">Build claims where every split looks equally plausible to a bounded opponent. (Iliad §17)</p></div>
+<div class="card" style="padding:32px"><h3 style="font-size:36px">Train the debaters</h3><p class="t">Search or self-play instead of greedy moves: honest strategies or judge exploits? (Notebook 2)</p></div>
+</div>
+<div class="row">
+<div class="card" style="padding:32px"><h3 style="font-size:36px">Distilled RRM</h3><p class="t">Retrain a reward model at each level. Are blind spots inherited? (Notebook 3)</p></div>
+<div class="card" style="padding:32px"><h3 style="font-size:36px">Hidden-passage debate</h3><p class="t">Small open models debate a passage the judge can’t see. (LLM)</p></div>
+<div class="card" style="padding:32px"><h3 style="font-size:36px">Shallow HCH</h3><p class="t">Answer only by decomposing into sub-questions for fresh copies. (LLM)</p></div>
+</div>
+
+</section>
+<section data-note="The closing question from the Iliad debate session (§21). Thank everyone, point to the repo, the readings in the README (Christiano et al., Leike et al., Irving et al., Hubinger’s 11 proposals), and the SRC reading club for follow-up discussions." id="close" class="dark">
+<p class="eyebrow">To close on</p>
+<div class="spacer"></div>
+<h1 class="in" style="--i:0">Is debate research more capabilities than alignment?</h1>
+<p class="lede in" style="--i:1">Show of hands, then two or three answers.</p>
+<div class="spacer"></div>
+<div class="row-c in" style="--i:2">
+<p class="pill">github.com/AI-Alignment-UIUC/Scalable-Oversight-Workshop</p>
+<p class="small">Notebooks, slides outline, readings and project ideas</p>
+</div>
+
+</section>
+
+</div>
+<div id="notes"></div><div id="hud"></div>
+<script>
+const S = [...document.querySelectorAll('#stage > section')]; let i = 0, showNotes = false;
+const hud = document.getElementById('hud'), notes = document.getElementById('notes'), stage = document.getElementById('stage');
+function fit() { const k = Math.min(innerWidth / 1920, innerHeight / 1080); stage.style.transform = `translate(-50%, -50%) scale(${k})`; }
+function go(n) {
+  i = Math.max(0, Math.min(S.length - 1, n));
+  S.forEach((s, j) => s.classList.toggle('on', j === i));
+  hud.textContent = `${i + 1} / ${S.length}  ·  ← → to move  ·  N notes  ·  F full screen`;
+  notes.textContent = S[i].dataset.note || '(no notes)'; notes.style.display = showNotes ? 'block' : 'none';
+  history.replaceState(null, '', '#' + (i + 1));
+}
+addEventListener('keydown', e => {
+  if (['ArrowRight', 'PageDown', ' '].includes(e.key)) go(i + 1);
+  else if (['ArrowLeft', 'PageUp'].includes(e.key)) go(i - 1);
+  else if (e.key === 'Home') go(0); else if (e.key === 'End') go(S.length - 1);
+  else if (e.key.toLowerCase() === 'n') { showNotes = !showNotes; go(i); }
+  else if (e.key.toLowerCase() === 'f') document.documentElement.requestFullscreen?.();
+});
+addEventListener('click', e => go(e.clientX > innerWidth / 3 ? i + 1 : i - 1));
+addEventListener('resize', fit); fit(); go((parseInt(location.hash.slice(1)) || 1) - 1);
+</script></body></html>

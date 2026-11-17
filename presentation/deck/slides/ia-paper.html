@@ -1,0 +1,22 @@
+<section id="ia-paper">
+<p class="eyebrow">01 · The experiments</p>
+<h2>Five algorithmic tasks, a hard-coded “human”</h2>
+<div class="row" style="gap:64px">
+<div class="col grow">
+<ul>
+<li>Permutation powering</li>
+<li>Sequential assignments</li>
+<li>Wildcard search</li>
+<li>Shortest path</li>
+<li>Union find</li>
+</ul>
+<p class="small">The five tasks of §4.1.</p>
+</div>
+<div class="col grow" style="gap:32px">
+<p class="quote-m" style="font-size:40px">“Rather than having a human perform the decomposition, we provide a hard-coded algorithm H which decomposes each task”</p>
+<p class="cite">§4.1</p>
+<p class="body">Each task grows from size 8 to 64 as X improves (Table 3, App. C.2). The baseline is supervised learning from the ground truth (Fig. 2).</p>
+</div>
+</div>
+<aside>The tasks are chosen because the right decomposition is known, so the paper can test the training method without a person in the loop. Permutation powering, the one our notebook uses: “Given a permutation σ: {1, …, 64} → {1, …, 64}, compute σ^k(x) for k up to 64” (§4.1). X is a Transformer: “We implement X as an encoder-decoder architecture with self-attention, closely following the Transformer architecture” (§2.5). Point out that every one of these tasks has a clean recursive structure; the open question is whether real tasks do.</aside>
+</section>

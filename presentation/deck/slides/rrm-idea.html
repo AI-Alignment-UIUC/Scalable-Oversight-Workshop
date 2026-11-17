@@ -1,0 +1,11 @@
+<section id="rrm-idea">
+<p class="eyebrow">03 · Method</p>
+<h2>Earlier agents help the user evaluate</h2>
+<p class="quote-m">“In step k we use the agent Aₖ₋₁ to assist the user in evaluating outcomes when training agent Aₖ.”</p>
+<p class="cite">§3.2</p>
+<div class="row">
+<div class="card"><p class="num">Their example · §3.2</p><p class="t">Evaluating a novel, where “the user is assisted by an agent that provides auxiliary input: extracting a summary of the plotline, checking spelling and grammar, summarizing character development, assessing the flow of the prose, and so on.”</p></div>
+<div class="card"><p class="num">Fig. 2</p><p class="t">“Recursive reward modeling: agent Aₖ₋₁ interacts with the user to assist in evaluation process for training reward model and agent Aₖ”</p></div>
+</div>
+<aside>The definition (§3.2): “we call recursive reward modeling: leveraging agents trained with reward modeling on simpler tasks” to help evaluate harder ones. Each assistant was itself trained with reward modeling, one level down. This is where Assumption 2 does the work: the user never has to produce a novel, only judge one with help.</aside>
+</section>

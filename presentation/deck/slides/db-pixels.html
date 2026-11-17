@@ -1,0 +1,15 @@
+<section id="db-pixels" class="dark">
+<p class="eyebrow">02 · Demo setup · Notebook 2</p>
+<h2>The pixel game, on 8×8 digits</h2>
+<table>
+<tr><th style="width:18%"></th><th style="width:41%">Paper (§3.1)</th><th style="width:41%">Notebook 2</th></tr>
+<tr><td><b>Images</b></td><td>MNIST</td><td>scikit-learn’s 8×8 digits</td></tr>
+<tr><td><b>Judge</b></td><td>trained in advance on 6 (or 4) random nonzero pixels</td><td>same, with 6 pixels; a small network</td></tr>
+<tr><td><b>Moves</b></td><td>one nonzero pixel per turn, 6 in all</td><td>same</td></tr>
+<tr><td><b>Debaters</b></td><td>Monte Carlo tree search, 10k rollouts per move</td><td>greedy: the pixel that helps most right now</td></tr>
+<tr><td><b>Precommit</b></td><td>claims stated up front; the liar wins if any of 9 lies wins</td><td>same, plus the version without precommit</td></tr>
+</table>
+<div class="spacer"></div>
+<p class="body">Then you judge: the notebook shows you the revealed pixels, and you pick the honest debater.</p>
+<aside>Run section 4 live (about 40 seconds). What to expect, with the paper’s Table 2 in brackets: the judge alone is right 56% of the time [59.4]. Without precommit, honest first 52% [67.4], liar first 82% [81.5], mean 67% [74.4]. With precommit, 86% [87.4], 93% [90.4], mean 90% [88.9]. As in the paper, precommit helps the honest side and moving second is an advantage. Then let the room judge a few debates with the buttons in section 5a. Caveat, as in the paper: debaters can only reveal true pixels, so they cannot lie about evidence. Greedy debaters are a weak test; exercise 1 adds lookahead. Hands-on (20 min): Notebook 2 exercises 1–2.</aside>
+</section>
